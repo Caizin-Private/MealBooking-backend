@@ -1,4 +1,3 @@
-org/example/Main.class
 org/example/repository/MealBookingRepository.class
 org/example/entity/CutoffConfig$CutoffConfigBuilder.class
 org/example/entity/MealBooking$MealBookingBuilder.class
