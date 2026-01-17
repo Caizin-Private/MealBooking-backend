@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -33,6 +34,17 @@ public class MealBookingServiceImpl implements MealBookingService {
 
         if (!geoFenceService.isInsideAllowedArea(latitude, longitude)) {
             throw new RuntimeException("User outside allowed location");
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalTime cutoffTime = LocalTime.of(22, 0);
+
+        for (LocalDate date : bookingDates) {
+            if (date.equals(today.plusDays(1))) {
+                if (LocalTime.now().isAfter(cutoffTime)) {
+                    throw new RuntimeException("Booking closed for tomorrow");
+                }
+            }
         }
 
         // logic will come here (incrementally)

@@ -111,4 +111,29 @@ class MealBookingServiceTest {
     }
 
 
+    @Test
+    void bookingForTomorrowFailsAfterCutoff() {
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
+                .thenReturn(true);
+
+        RuntimeException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class,
+                () -> mealBookingService.bookMeals(
+                        user,
+                        List.of(LocalDate.now().plusDays(1)), // TOMORROW
+                        10.0,
+                        10.0
+                )
+        );
+    }
+
+
 }
