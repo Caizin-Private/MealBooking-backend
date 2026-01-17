@@ -165,5 +165,39 @@ class MealBookingServiceTest {
         );
     }
 
+    @Test
+    void pushNotificationSentAfterSuccessfulBooking() {
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        LocalDate bookingDate = LocalDate.now().plusDays(2);
+
+        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
+                .thenReturn(true);
+
+        when(mealBookingRepository.existsByUserIdAndBookingDate(
+                user.getId(), bookingDate
+        )).thenReturn(false);
+
+        mealBookingService.bookMeals(
+                user,
+                List.of(bookingDate),
+                10.0,
+                10.0
+        );
+
+        verify(pushNotificationService)
+                .sendBookingConfirmation(
+                        user.getId(),
+                        List.of(bookingDate)
+                );
+    }
+
+
 
 }

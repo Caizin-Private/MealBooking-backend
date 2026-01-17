@@ -61,5 +61,11 @@ public class MealBookingServiceImpl implements MealBookingService {
                 .build();
 
         mealBookingRepository.save(booking);
+
+        //Push notification after success
+        pushNotificationService.sendBookingConfirmation(
+                user.getId(),
+                bookingDates
+        );
     }
 }
