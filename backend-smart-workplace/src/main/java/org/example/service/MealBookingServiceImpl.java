@@ -2,12 +2,15 @@ package org.example.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.entity.BookingStatus;
+import org.example.entity.CutoffConfig;
 import org.example.entity.MealBooking;
 import org.example.entity.Role;
 import org.example.entity.User;
+import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -20,6 +23,8 @@ public class MealBookingServiceImpl implements MealBookingService {
     private final MealBookingRepository mealBookingRepository;
     private final GeoFenceService geoFenceService;
     private final PushNotificationService pushNotificationService;
+    private final CutoffConfigRepository cutoffConfigRepository;
+    private final Clock clock;   // ✅ ADD THIS
 
     @Override
     public void bookMeals(
@@ -36,33 +41,37 @@ public class MealBookingServiceImpl implements MealBookingService {
             throw new RuntimeException("User outside allowed location");
         }
 
-        LocalDate today = LocalDate.now();
-        LocalTime cutoffTime = LocalTime.of(22, 0);
+        CutoffConfig cutoffConfig = cutoffConfigRepository.findAll()
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Cutoff config not set"));
+
+        LocalTime cutoffTime = cutoffConfig.getCutoffTime();
+
+        LocalDate today = LocalDate.now(clock);
+        LocalTime now = LocalTime.now(clock);
 
         for (LocalDate date : bookingDates) {
-            if (date.equals(today.plusDays(1))) {
-                if (LocalTime.now().isAfter(cutoffTime)) {
-                    throw new RuntimeException("Booking closed for tomorrow");
-                }
+
+            if (date.equals(today.plusDays(1)) && now.isAfter(cutoffTime)) {
+                throw new RuntimeException("Booking closed for tomorrow");
             }
 
             if (mealBookingRepository.existsByUserIdAndBookingDate(
                     user.getId(), date)) {
                 throw new RuntimeException("Meal already booked for this date");
             }
+
+            MealBooking booking = MealBooking.builder()
+                    .userId(user.getId())
+                    .bookingDate(date)
+                    .bookedAt(LocalDateTime.now(clock))
+                    .status(BookingStatus.BOOKED)
+                    .build();
+
+            mealBookingRepository.save(booking);
         }
 
-        // logic will come here (incrementally)
-        MealBooking booking = MealBooking.builder()
-                .userId(user.getId())
-                .bookingDate(bookingDates.get(0))
-                .bookedAt(LocalDateTime.now())
-                .status(BookingStatus.BOOKED)
-                .build();
-
-        mealBookingRepository.save(booking);
-
-        //Push notification after success
         pushNotificationService.sendBookingConfirmation(
                 user.getId(),
                 bookingDates
