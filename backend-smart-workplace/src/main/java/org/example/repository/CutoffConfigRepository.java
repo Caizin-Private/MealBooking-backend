@@ -1,4 +1,7 @@
 package org.example.repository;
 
-public class CutoffConfigRepository {
+import org.example.entity.CutoffConfig;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CutoffConfigRepository extends JpaRepository<CutoffConfig, Long> {
 }
