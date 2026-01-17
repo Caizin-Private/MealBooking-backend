@@ -85,4 +85,30 @@ class MealBookingServiceTest {
         );
     }
 
+    @Test
+    void bookingFailsWhenOutsideGeofence() {
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        // GeoFence denies location
+        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
+                .thenReturn(false);
+
+        RuntimeException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class,
+                () -> mealBookingService.bookMeals(
+                        user,
+                        List.of(LocalDate.now().plusDays(2)),
+                        0.0,
+                        0.0
+                )
+        );
+    }
+
+
 }

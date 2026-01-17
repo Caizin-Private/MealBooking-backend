@@ -30,6 +30,11 @@ public class MealBookingServiceImpl implements MealBookingService {
         if (user.getRole() != Role.USER) {
             throw new RuntimeException("Only USER can book meals");
         }
+
+        if (!geoFenceService.isInsideAllowedArea(latitude, longitude)) {
+            throw new RuntimeException("User outside allowed location");
+        }
+
         // logic will come here (incrementally)
         MealBooking booking = MealBooking.builder()
                 .userId(user.getId())
