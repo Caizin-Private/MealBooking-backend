@@ -135,5 +135,35 @@ class MealBookingServiceTest {
         );
     }
 
+    @Test
+    void duplicateBookingFails() {
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        LocalDate bookingDate = LocalDate.now().plusDays(2);
+
+        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
+                .thenReturn(true);
+
+        when(mealBookingRepository.existsByUserIdAndBookingDate(
+                user.getId(), bookingDate
+        )).thenReturn(true);
+
+        RuntimeException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class,
+                () -> mealBookingService.bookMeals(
+                        user,
+                        List.of(bookingDate),
+                        10.0,
+                        10.0
+                )
+        );
+    }
+
 
 }

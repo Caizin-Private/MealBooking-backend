@@ -45,6 +45,11 @@ public class MealBookingServiceImpl implements MealBookingService {
                     throw new RuntimeException("Booking closed for tomorrow");
                 }
             }
+
+            if (mealBookingRepository.existsByUserIdAndBookingDate(
+                    user.getId(), date)) {
+                throw new RuntimeException("Meal already booked for this date");
+            }
         }
 
         // logic will come here (incrementally)
