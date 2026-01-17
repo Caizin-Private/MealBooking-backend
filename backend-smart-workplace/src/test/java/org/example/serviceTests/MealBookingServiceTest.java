@@ -63,4 +63,26 @@ class MealBookingServiceTest {
         // THEN
         verify(mealBookingRepository).save(any(MealBooking.class));
     }
+
+    @Test
+    void adminCannotBookMeals() {
+        User admin = new User(
+                2L,
+                "Admin User",
+                "admin@test.com",
+                Role.ADMIN,
+                LocalDateTime.now()
+        );
+
+        RuntimeException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                RuntimeException.class,
+                () -> mealBookingService.bookMeals(
+                        admin,
+                        List.of(LocalDate.now().plusDays(1)),
+                        10.0,
+                        10.0
+                )
+        );
+    }
+
 }

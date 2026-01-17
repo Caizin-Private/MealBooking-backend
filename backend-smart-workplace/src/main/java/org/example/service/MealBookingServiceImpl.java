@@ -3,6 +3,7 @@ package org.example.service;
 import lombok.RequiredArgsConstructor;
 import org.example.entity.BookingStatus;
 import org.example.entity.MealBooking;
+import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.MealBookingRepository;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,9 @@ public class MealBookingServiceImpl implements MealBookingService {
             double latitude,
             double longitude
     ) {
+        if (user.getRole() != Role.USER) {
+            throw new RuntimeException("Only USER can book meals");
+        }
         // logic will come here (incrementally)
         MealBooking booking = MealBooking.builder()
                 .userId(user.getId())
