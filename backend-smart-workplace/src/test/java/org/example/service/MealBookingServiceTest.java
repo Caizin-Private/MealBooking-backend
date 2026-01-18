@@ -79,18 +79,22 @@ class MealBookingServiceTest {
     }
 
     @Test
-    void adminCannotBookMeals() {
+    void adminCanBookFutureDate() {
         User admin = new User(2L, "Admin", "admin@test.com", Role.ADMIN, LocalDateTime.now(clock));
 
-        assertThrows(RuntimeException.class,
-                () -> mealBookingService.bookMeals(
-                        admin,
-                        List.of(LocalDate.now(clock).plusDays(1)),
-                        10.0,
-                        10.0
-                )
-        );
+        LocalDate bookingDate = LocalDate.now(clock).plusDays(2);
+
+        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
+                .thenReturn(true);
+
+        when(mealBookingRepository.existsByUserIdAndBookingDate(admin.getId(), bookingDate))
+                .thenReturn(false);
+
+        mealBookingService.bookMeals(admin, List.of(bookingDate), 10.0, 10.0);
+
+        verify(mealBookingRepository).save(any(MealBooking.class));
     }
+
 
     @Test
     void bookingFailsWhenOutsideGeofence() {
