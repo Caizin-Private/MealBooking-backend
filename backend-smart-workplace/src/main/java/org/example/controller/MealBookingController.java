@@ -2,6 +2,7 @@ package org.example.controller;
 
 import org.example.dto.MealBookingRequestDTO;
 import org.example.entity.User;
+import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,18 +16,24 @@ import java.util.Map;
 public class MealBookingController {
 
     private final MealBookingService mealBookingService;
+    private final UserRepository userRepository;
 
-    public MealBookingController(MealBookingService mealBookingService) {
+    public MealBookingController(
+            MealBookingService mealBookingService,
+            UserRepository userRepository
+    ) {
         this.mealBookingService = mealBookingService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/book")
     public ResponseEntity<?> bookMeals(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.User userDetails,
             @RequestBody MealBookingRequestDTO request
     ) {
-        User user = new User();
-        user.setEmail(userDetails.getUsername());
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
 
         mealBookingService.bookMeals(
                 user,
