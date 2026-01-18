@@ -1,4 +1,4 @@
-package org.example.serviceTests;
+package org.example.service;
 
 import org.example.entity.CutoffConfig;
 import org.example.entity.MealBooking;
@@ -6,9 +6,6 @@ import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
-import org.example.service.GeoFenceService;
-import org.example.service.MealBookingService;
-import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
