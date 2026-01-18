@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smart_workplace
+    username: sw_user
+    password: sw_pass
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
