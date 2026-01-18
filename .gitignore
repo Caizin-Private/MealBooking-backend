@@ -9,3 +9,8 @@ target/
 
 # OS files
 .DS_Store
+
+# IntelliJ
+.idea/
+*.iml
+
