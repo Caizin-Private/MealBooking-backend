@@ -69,6 +69,7 @@ class MealBookingControllerTest {
                 .andExpect(jsonPath("$.dates").isArray());
     }
 
+    // UNAUTHENTICATED → 401
     @Test
     void unauthenticatedUserCannotBookMeals() throws Exception {
 
@@ -83,6 +84,40 @@ class MealBookingControllerTest {
                                 .content(objectMapper.writeValueAsString(request))
                 )
                 .andExpect(status().isForbidden());
+    }
+
+
+    //ADMIN can also book meals
+    @Test
+    @WithMockUser(username = "admin@company.com", roles = "ADMIN")
+    void adminCanBookMeals() throws Exception {
+
+        MealBookingRequestDTO request = new MealBookingRequestDTO();
+        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
+        request.setLatitude(10.0);
+        request.setLongitude(10.0);
+
+        doNothing().when(mealBookingService)
+                .bookMeals(any(User.class), anyList(), anyDouble(), anyDouble());
+
+        mockMvc.perform(
+                        post("/api/meals/book")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message")
+                        .value("Meals booked successfully"));
+    }
+
+    //Helper method
+    private MealBookingRequestDTO validRequest() {
+        MealBookingRequestDTO request = new MealBookingRequestDTO();
+        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
+        request.setLatitude(10.0);
+        request.setLongitude(10.0);
+        return request;
     }
 
 }
