@@ -10,4 +10,7 @@ public interface PushNotificationService {
             LocalDate endDate
     );
     void sendCancellationConfirmation(Long userId, LocalDate date);
+
+    void sendMealReminder(Long userId, LocalDate date);
+
 }
