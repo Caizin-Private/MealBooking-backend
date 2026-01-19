@@ -2,6 +2,7 @@ package org.example.dto;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.antlr.v4.runtime.misc.NotNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -10,9 +11,10 @@ import java.util.List;
 @Setter
 public class MealBookingRequestDTO {
 
-    private List<LocalDate> bookingDates;
-
-    private Double latitude;
-
-    private Double longitude;
+    @NotNull
+    LocalDate startDate;
+    @NotNull
+    LocalDate endDate;
+    double latitude;
+    double longitude;
 }
