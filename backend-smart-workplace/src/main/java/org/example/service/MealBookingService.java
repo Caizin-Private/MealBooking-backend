@@ -3,14 +3,16 @@ package org.example.service;
 import org.example.entity.User;
 
 import java.time.LocalDate;
-import java.util.List;
 
 public interface MealBookingService {
 
     void bookMeals(
             User user,
-            List<LocalDate> bookingDates,
+            LocalDate startDate,
+            LocalDate endDate,
             double latitude,
             double longitude
     );
+
+    void cancelMeal(User user, LocalDate date);
 }
