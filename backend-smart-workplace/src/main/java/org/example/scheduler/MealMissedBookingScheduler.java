@@ -7,6 +7,7 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.UserRepository;
 import org.example.service.PushNotificationService;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -24,40 +25,34 @@ public class MealMissedBookingScheduler {
     private final CutoffConfigRepository cutoffConfigRepository;
     private final Clock clock;
 
+    //Runs AFTER cutoff (10:30 PM)
+    @Scheduled(cron = "0 30 22 * * *")
     public void sendMissedMealBookingNotifications() {
 
-        Optional<CutoffConfig> cutoffOpt =
-                cutoffConfigRepository.findTopByOrderByIdDesc();
+        cutoffConfigRepository.findTopByOrderByIdDesc()
+                .ifPresent(cutoffConfig -> {
 
-        if (cutoffOpt.isEmpty()) {
-            return; // test expects no crash
-        }
+                    LocalTime now = LocalTime.now(clock);
 
-        CutoffConfig cutoffConfig = cutoffOpt.get();
-        LocalTime now = LocalTime.now(clock);
+                    if (now.isBefore(cutoffConfig.getCutoffTime())) {
+                        return;
+                    }
 
-        // Missed booking only AFTER cutoff
-        if (now.isBefore(cutoffConfig.getCutoffTime())) {
-            return;
-        }
+                    LocalDate today = LocalDate.now(clock);
 
-        LocalDate today = LocalDate.now(clock);
+                    userRepository.findAll().forEach(user -> {
 
-        for (User user : userRepository.findAll()) {
+                        if (user.getRole() != Role.USER) return;
 
-            if (user.getRole() != Role.USER) {
-                continue;
-            }
+                        boolean booked =
+                                mealBookingRepository
+                                        .existsByUserAndBookingDate(user, today);
 
-            boolean booked =
-                    mealBookingRepository.existsByUserAndBookingDate(user, today);
-
-            if (!booked) {
-                pushNotificationService.sendMissedBookingNotification(
-                        user.getId(),
-                        today
-                );
-            }
-        }
+                        if (!booked) {
+                            pushNotificationService
+                                    .sendMissedBookingNotification(user.getId(), today);
+                        }
+                    });
+                });
     }
 }
