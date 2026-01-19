@@ -8,6 +8,7 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.UserRepository;
 import org.example.service.PushNotificationService;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -25,40 +26,34 @@ public class MealReminderScheduler {
     private final CutoffConfigRepository cutoffConfigRepository;
     private final Clock clock;
 
+    // 🔔 Runs every day at 6 PM
+    @Scheduled(cron = "0 0 18 * * *")
     public void sendMealBookingReminders() {
 
-        Optional<CutoffConfig> cutoffOpt =
-                cutoffConfigRepository.findTopByOrderByIdDesc();
+        cutoffConfigRepository.findTopByOrderByIdDesc()
+                .ifPresent(cutoffConfig -> {
 
-        if (cutoffOpt.isEmpty()) {
-            return; // no config → no reminders
-        }
+                    LocalTime now = LocalTime.now(clock);
 
-        CutoffConfig cutoffConfig = cutoffOpt.get();
-        LocalTime now = LocalTime.now(clock);
+                    if (now.isAfter(cutoffConfig.getCutoffTime())) {
+                        return;
+                    }
 
-        if (now.isAfter(cutoffConfig.getCutoffTime())) {
-            return;
-        }
+                    LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
 
-        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+                    userRepository.findAll().forEach(user -> {
 
-        userRepository.findAll().forEach(user -> {
+                        if (user.getRole() != Role.USER) return;
 
-            if (user.getRole() != Role.USER) {
-                return;
-            }
+                        boolean alreadyBooked =
+                                mealBookingRepository
+                                        .existsByUserAndBookingDate(user, tomorrow);
 
-            boolean alreadyBooked =
-                    mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
-
-            if (!alreadyBooked) {
-                pushNotificationService.sendMealReminder(
-                        user.getId(),
-                        tomorrow
-                );
-            }
-        });
+                        if (!alreadyBooked) {
+                            pushNotificationService
+                                    .sendMealReminder(user.getId(), tomorrow);
+                        }
+                    });
+                });
     }
-
 }
