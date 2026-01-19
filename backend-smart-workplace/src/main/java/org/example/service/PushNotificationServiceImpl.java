@@ -39,4 +39,9 @@ public class PushNotificationServiceImpl implements PushNotificationService {
     public void sendMissedBookingNotification(Long userId, LocalDate date) {
         // TODO: implement later (email / push / SMS)
     }
+
+    @Override
+    public void sendInactivityNudge(Long userId) {
+        // TODO: implement later
+    }
 }
