@@ -24,6 +24,26 @@ public class MealInactivityScheduler {
     private final Clock clock;
 
     public void sendInactivityNudges() {
-        // empty for now
+
+        LocalDate today = LocalDate.now(clock);
+        LocalDate threeDaysAgo = today.minusDays(3);
+
+        userRepository.findAll().forEach(user -> {
+
+            if (user.getRole() != Role.USER) {
+                return;
+            }
+
+            boolean hasRecentBooking =
+                    mealBookingRepository.existsByUserAndBookingDateBetween(
+                            user,
+                            threeDaysAgo,
+                            today
+                    );
+
+            if (!hasRecentBooking) {
+                pushNotificationService.sendInactivityNudge(user.getId());
+            }
+        });
     }
 }

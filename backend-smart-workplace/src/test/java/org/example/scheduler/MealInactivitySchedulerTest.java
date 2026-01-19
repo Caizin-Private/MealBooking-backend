@@ -38,7 +38,7 @@ class MealInactivitySchedulerTest {
     private Clock clock;
 
     @Autowired
-    private MealMissedBookingScheduler missedScheduler;
+    private MealInactivityScheduler inactivityScheduler;
 
 
     private final ZoneId ZONE = ZoneId.of("UTC");
