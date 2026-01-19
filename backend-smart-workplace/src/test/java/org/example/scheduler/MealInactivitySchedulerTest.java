@@ -1,6 +1,5 @@
-package org.example.schedular;
+package org.example.scheduler;
 
-import org.example.entity.CutoffConfig;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.CutoffConfigRepository;
@@ -14,7 +13,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.time.*;
 import java.util.List;
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
