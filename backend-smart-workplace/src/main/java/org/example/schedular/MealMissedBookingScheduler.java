@@ -1,6 +1,4 @@
 package org.example.schedular;
-
-
 import lombok.RequiredArgsConstructor;
 import org.example.entity.CutoffConfig;
 import org.example.entity.Role;
@@ -18,7 +16,7 @@ import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class MealReminderScheduler {
+public class MealMissedBookingScheduler {
 
     private final UserRepository userRepository;
     private final MealBookingRepository mealBookingRepository;
@@ -26,40 +24,40 @@ public class MealReminderScheduler {
     private final CutoffConfigRepository cutoffConfigRepository;
     private final Clock clock;
 
-    public void sendMealBookingReminders() {
+    public void sendMissedMealBookingNotifications() {
 
         Optional<CutoffConfig> cutoffOpt =
                 cutoffConfigRepository.findTopByOrderByIdDesc();
 
         if (cutoffOpt.isEmpty()) {
-            return; // no config → no reminders
+            return; // test expects no crash
         }
 
         CutoffConfig cutoffConfig = cutoffOpt.get();
         LocalTime now = LocalTime.now(clock);
 
-        if (now.isAfter(cutoffConfig.getCutoffTime())) {
+        // Missed booking only AFTER cutoff
+        if (now.isBefore(cutoffConfig.getCutoffTime())) {
             return;
         }
 
-        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+        LocalDate today = LocalDate.now(clock);
 
-        userRepository.findAll().forEach(user -> {
+        for (User user : userRepository.findAll()) {
 
             if (user.getRole() != Role.USER) {
-                return;
+                continue;
             }
 
-            boolean alreadyBooked =
-                    mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
+            boolean booked =
+                    mealBookingRepository.existsByUserAndBookingDate(user, today);
 
-            if (!alreadyBooked) {
-                pushNotificationService.sendMealReminder(
+            if (!booked) {
+                pushNotificationService.sendMissedBookingNotification(
                         user.getId(),
-                        tomorrow
+                        today
                 );
             }
-        });
+        }
     }
-
 }

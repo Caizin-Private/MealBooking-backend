@@ -13,4 +13,7 @@ public interface PushNotificationService {
 
     void sendMealReminder(Long userId, LocalDate date);
 
+    void sendMissedBookingNotification(Long userId, LocalDate date);
+
+
 }
