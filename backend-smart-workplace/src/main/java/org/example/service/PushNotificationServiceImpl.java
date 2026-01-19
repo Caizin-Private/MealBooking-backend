@@ -3,16 +3,21 @@ package org.example.service;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Service
 public class PushNotificationServiceImpl implements PushNotificationService {
 
     @Override
-    public void sendBookingConfirmation(Long userId, List<LocalDate> dates) {
-        // TEMP: just log
+    public void sendBookingConfirmation(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        // TEMP: just log (later → email / push / SMS)
         System.out.println(
-                "Booking confirmed for user " + userId + " for dates " + dates
+                "Meal booking confirmed for user " + userId +
+                        " from " + startDate +
+                        " to " + endDate
         );
     }
 }
