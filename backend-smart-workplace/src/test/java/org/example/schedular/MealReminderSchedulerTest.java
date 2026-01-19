@@ -167,4 +167,16 @@ class MealReminderSchedulerTest {
     }
 
 
+    @Test
+    void reminderNotSentWhenCutoffConfigMissing() {
+
+        when(cutoffConfigRepository.findTopByOrderByIdDesc())
+                .thenReturn(Optional.empty());
+
+        scheduler.sendMealBookingReminders();
+
+        verifyNoInteractions(pushNotificationService);
+    }
+
+
 }
