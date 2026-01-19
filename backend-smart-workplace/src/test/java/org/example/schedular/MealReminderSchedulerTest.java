@@ -127,4 +127,44 @@ class MealReminderSchedulerTest {
                 .sendMealReminder(anyLong(), any());
     }
 
+    @Test
+    void reminderNotSentWhenUserAlreadyBooked() {
+
+        Instant fixedInstant =
+                LocalDateTime.of(2026, 1, 18, 18, 0)
+                        .atZone(ZONE)
+                        .toInstant();
+
+        when(clock.instant()).thenReturn(fixedInstant);
+        when(clock.getZone()).thenReturn(ZONE);
+
+        LocalDate tomorrow = LocalDate.of(2026, 1, 19);
+
+        when(cutoffConfigRepository.findTopByOrderByIdDesc())
+                .thenReturn(Optional.of(
+                        CutoffConfig.builder()
+                                .cutoffTime(LocalTime.of(22, 0))
+                                .build()
+                ));
+
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findAll()).thenReturn(List.of(user));
+
+        when(mealBookingRepository.existsByUserAndBookingDate(user, tomorrow))
+                .thenReturn(true); // already booked
+
+        scheduler.sendMealBookingReminders();
+
+        verify(pushNotificationService, never())
+                .sendMealReminder(anyLong(), any());
+    }
+
+
 }
