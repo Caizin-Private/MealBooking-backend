@@ -26,13 +26,17 @@ public class MealMissedBookingScheduler {
     private final PushNotificationService pushNotificationService;
     private final Clock clock;
 
-    @Scheduled(cron = "0 30 22 * * *") // 10:30 PM (after cutoff)
+    @Scheduled(cron = "0 30 22 * * *") // 10:30 PM
     public void sendMissedMealBookingNotifications() {
 
-        CutoffConfig cutoffConfig = cutoffConfigRepository
-                .findTopByOrderByIdDesc()
-                .orElseThrow();
+        Optional<CutoffConfig> cutoffOpt =
+                cutoffConfigRepository.findTopByOrderByIdDesc();
 
+        if (cutoffOpt.isEmpty()) {
+            return; // ✅ NEVER throw from schedulers
+        }
+
+        CutoffConfig cutoffConfig = cutoffOpt.get();
         LocalTime now = LocalTime.now(clock);
 
         // Only AFTER cutoff
@@ -41,6 +45,8 @@ public class MealMissedBookingScheduler {
         }
 
         LocalDate today = LocalDate.now(clock);
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
         userRepository.findAll().forEach(user -> {
 
@@ -55,16 +61,13 @@ public class MealMissedBookingScheduler {
                 return;
             }
 
-            // ---------- IDPOTENCY CHECK ----------
-            LocalDateTime start = today.atStartOfDay();
-            LocalDateTime end = today.atTime(23, 59, 59);
-
+            // ---------- IDEMPOTENCY CHECK ----------
             boolean alreadyNotified =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.MISSED_BOOKING,
-                            start,
-                            end
+                            startOfDay,
+                            endOfDay
                     );
 
             if (alreadyNotified) {
@@ -78,12 +81,13 @@ public class MealMissedBookingScheduler {
                             .title("Meal booking missed")
                             .message("You missed booking your meal for today.")
                             .type(NotificationType.MISSED_BOOKING)
-                            .scheduledAt(LocalDateTime.now(clock))
-                            .sent(true)
-                            .sentAt(LocalDateTime.now(clock))
+                            .scheduledAt(today.atStartOfDay()) // 👈 business date
+                            .sent(false)
+                            .sentAt(null)
                             .build()
             );
 
+            // ---------- SEND ----------
             pushNotificationService.sendMissedBookingNotification(
                     user.getId(),
                     today
@@ -91,3 +95,4 @@ public class MealMissedBookingScheduler {
         });
     }
 }
+

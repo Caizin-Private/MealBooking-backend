@@ -1,4 +1,5 @@
 package org.example.scheduler;
+
 import lombok.RequiredArgsConstructor;
 import org.example.entity.Notification;
 import org.example.entity.NotificationType;
@@ -30,7 +31,10 @@ public class MealInactivityScheduler {
     public void sendInactivityNudges() {
 
         LocalDate today = LocalDate.now(clock);
+
+        // ✔ Correct inactivity window
         LocalDate fromDate = today.minusDays(INACTIVITY_DAYS);
+        LocalDate toDate = today.minusDays(1);
 
         userRepository.findAll().forEach(user -> {
 
@@ -42,14 +46,15 @@ public class MealInactivityScheduler {
                     mealBookingRepository.existsByUserAndBookingDateBetween(
                             user,
                             fromDate,
-                            today
+                            toDate
                     );
 
+            // ✔ IMPORTANT early return
             if (hasRecentBooking) {
                 return;
             }
 
-            // ---------- IDPOTENCY CHECK ----------
+            // ---------- IDEMPOTENCY CHECK ----------
             LocalDateTime start = today.atStartOfDay();
             LocalDateTime end = today.atTime(23, 59, 59);
 
@@ -70,11 +75,11 @@ public class MealInactivityScheduler {
                     Notification.builder()
                             .userId(user.getId())
                             .title("We miss you!")
-                            .message("You haven’t booked meals recently. Stay on track!")
+                            .message("You haven’t booked meals in the last few days.")
                             .type(NotificationType.INACTIVITY_NUDGE)
                             .scheduledAt(LocalDateTime.now(clock))
-                            .sent(true)
-                            .sentAt(LocalDateTime.now(clock))
+                            .sent(false)
+                            .sentAt(null)
                             .build()
             );
 
