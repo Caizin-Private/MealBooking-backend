@@ -28,4 +28,10 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 "Cancellation notification sent to user " + userId + " for date " + date
         );
     }
+
+
+    @Override
+    public void sendMealReminder(Long userId, LocalDate date) {
+        // TODO: Implement reminder notification (email / push / SMS)
+    }
 }
