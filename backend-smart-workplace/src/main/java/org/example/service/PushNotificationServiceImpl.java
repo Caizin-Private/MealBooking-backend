@@ -1,11 +1,19 @@
 package org.example.service;
 
+import lombok.RequiredArgsConstructor;
+import org.example.entity.Notification;
+import org.example.entity.NotificationType;
+import org.example.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class PushNotificationServiceImpl implements PushNotificationService {
+
+    private final NotificationRepository notificationRepository;
 
     @Override
     public void sendBookingConfirmation(
@@ -32,16 +40,30 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
     @Override
     public void sendMealReminder(Long userId, LocalDate date) {
-        // TODO: Implement reminder notification (email / push / SMS)
+
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .title("Meal booking reminder")
+                .message("Please book your meal for " + date)
+                .type(NotificationType.MEAL_REMINDER)
+                .sent(false)
+                .scheduledAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(notification);
     }
 
     @Override
     public void sendMissedBookingNotification(Long userId, LocalDate date) {
-        // TODO: implement later (email / push / SMS)
+        System.out.println(
+                "[MISSED BOOKING] User " + userId + " missed booking for " + date
+        );
     }
 
     @Override
     public void sendInactivityNudge(Long userId) {
-        // TODO: implement later
+        System.out.println(
+                "[INACTIVITY NUDGE] User " + userId + " has been inactive"
+        );
     }
 }
