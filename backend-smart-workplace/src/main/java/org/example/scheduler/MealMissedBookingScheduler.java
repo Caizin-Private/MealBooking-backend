@@ -1,4 +1,4 @@
-package org.example.schedular;
+package org.example.scheduler;
 import lombok.RequiredArgsConstructor;
 import org.example.entity.CutoffConfig;
 import org.example.entity.Role;

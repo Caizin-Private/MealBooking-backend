@@ -1,9 +1,6 @@
-package org.example.schedular;
+package org.example.scheduler;
 import lombok.RequiredArgsConstructor;
-import org.example.entity.CutoffConfig;
 import org.example.entity.Role;
-import org.example.entity.User;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.UserRepository;
 import org.example.service.PushNotificationService;
@@ -11,8 +8,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
