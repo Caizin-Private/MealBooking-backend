@@ -34,4 +34,9 @@ public class PushNotificationServiceImpl implements PushNotificationService {
     public void sendMealReminder(Long userId, LocalDate date) {
         // TODO: Implement reminder notification (email / push / SMS)
     }
+
+    @Override
+    public void sendMissedBookingNotification(Long userId, LocalDate date) {
+        // TODO: implement later (email / push / SMS)
+    }
 }
