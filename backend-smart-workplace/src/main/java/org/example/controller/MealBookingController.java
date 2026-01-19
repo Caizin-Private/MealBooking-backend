@@ -1,6 +1,8 @@
 package org.example.controller;
 
+import jakarta.validation.Valid;
 import org.example.dto.MealBookingRequestDTO;
+import org.example.dto.MealCancelRequestDTO;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
@@ -27,7 +29,7 @@ public class MealBookingController {
     @PostMapping("/book")
     public ResponseEntity<?> bookMeals(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody MealBookingRequestDTO request
+            @Valid @RequestBody MealBookingRequestDTO request
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -41,5 +43,20 @@ public class MealBookingController {
         );
 
         return ResponseEntity.ok("Meals booked successfully");
+    }
+
+    @DeleteMapping("/cancel")
+    public ResponseEntity<String> cancelMeal(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody MealCancelRequestDTO request
+    ) {
+        User user =
+                userRepository
+                        .findByEmail(userDetails.getUsername())
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+
+        mealBookingService.cancelMeal(user, request.getDate());
+
+        return ResponseEntity.ok("Meal booking cancelled successfully");
     }
 }
