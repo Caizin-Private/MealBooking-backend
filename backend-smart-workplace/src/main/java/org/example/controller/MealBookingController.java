@@ -9,8 +9,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/meals")
 public class MealBookingController {
@@ -28,25 +26,20 @@ public class MealBookingController {
 
     @PostMapping("/book")
     public ResponseEntity<?> bookMeals(
-            @AuthenticationPrincipal org.springframework.security.core.userdetails.User userDetails,
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody MealBookingRequestDTO request
     ) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-
         mealBookingService.bookMeals(
                 user,
-                request.getBookingDates(),
+                request.getStartDate(),
+                request.getEndDate(),
                 request.getLatitude(),
                 request.getLongitude()
         );
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "message", "Meals booked successfully",
-                        "dates", request.getBookingDates()
-                )
-        );
+        return ResponseEntity.ok("Meals booked successfully");
     }
 }
