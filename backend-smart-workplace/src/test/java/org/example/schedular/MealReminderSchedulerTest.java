@@ -178,5 +178,39 @@ class MealReminderSchedulerTest {
         verifyNoInteractions(pushNotificationService);
     }
 
+    @Test
+    void reminderNotSentForAdminUsers() {
+
+        Instant fixedInstant =
+                LocalDateTime.of(2026, 1, 18, 18, 0)
+                        .atZone(ZONE)
+                        .toInstant();
+
+        when(clock.instant()).thenReturn(fixedInstant);
+        when(clock.getZone()).thenReturn(ZONE);
+
+        when(cutoffConfigRepository.findTopByOrderByIdDesc())
+                .thenReturn(Optional.of(
+                        CutoffConfig.builder()
+                                .cutoffTime(LocalTime.of(22, 0))
+                                .build()
+                ));
+
+        User admin = new User(
+                1L,
+                "Admin",
+                "admin@test.com",
+                Role.ADMIN,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findAll()).thenReturn(List.of(admin));
+
+        scheduler.sendMealBookingReminders();
+
+        verify(pushNotificationService, never())
+                .sendMealReminder(anyLong(), any());
+    }
+
 
 }
