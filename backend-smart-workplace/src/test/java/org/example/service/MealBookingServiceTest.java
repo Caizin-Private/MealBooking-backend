@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.*;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -53,9 +54,9 @@ class MealBookingServiceTest {
         when(clock.instant()).thenReturn(fixedInstant);
         when(clock.getZone()).thenReturn(ZONE);
 
-        when(cutoffConfigRepository.findAll())
+        when(cutoffConfigRepository.findTopByOrderByIdDesc())
                 .thenReturn(
-                        List.of(
+                        java.util.Optional.of(
                                 CutoffConfig.builder()
                                         .cutoffTime(LocalTime.of(22, 0))
                                         .build()
@@ -103,14 +104,19 @@ class MealBookingServiceTest {
 
     @Test
     void bookingForTomorrowFailsAfterCutoff() {
+
         Instant afterCutoff =
                 LocalDateTime.of(2026, 1, 18, 23, 0)
                         .atZone(ZONE)
                         .toInstant();
 
+        // 🔑 FIX
         when(clock.instant()).thenReturn(afterCutoff);
+        when(clock.getZone()).thenReturn(ZONE);
 
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(
+                1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock)
+        );
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(true);
@@ -125,6 +131,7 @@ class MealBookingServiceTest {
                 )
         );
     }
+
 
     @Test
     void duplicateBookingFails() {
@@ -196,4 +203,26 @@ class MealBookingServiceTest {
 
         verify(mealBookingRepository, times(4)).save(any(MealBooking.class));
     }
+
+    @Test
+    void cancelBookingDeletesRecordAndSendsNotification() {
+
+        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        LocalDate date = LocalDate.now(clock).plusDays(2);
+
+        MealBooking booking = MealBooking.builder()
+                .user(user)
+                .bookingDate(date)
+                .build();
+
+        when(mealBookingRepository.findByUserAndBookingDate(user, date))
+                .thenReturn(Optional.of(booking));
+
+        mealBookingService.cancelMeal(user, date);
+
+        verify(mealBookingRepository).delete(booking);
+        verify(pushNotificationService)
+                .sendCancellationConfirmation(user.getId(), date);
+    }
+
 }
