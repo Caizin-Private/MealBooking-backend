@@ -13,4 +13,6 @@ public interface MealBookingService {
             double latitude,
             double longitude
     );
+
+    void cancelMeal(User user, LocalDate date);
 }

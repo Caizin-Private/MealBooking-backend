@@ -9,4 +9,5 @@ public interface PushNotificationService {
             LocalDate startDate,
             LocalDate endDate
     );
+    void sendCancellationConfirmation(Long userId, LocalDate date);
 }
