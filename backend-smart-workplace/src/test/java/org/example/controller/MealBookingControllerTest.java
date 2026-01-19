@@ -2,7 +2,9 @@ package org.example.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.MealBookingRequestDTO;
+import org.example.entity.Role;
 import org.example.entity.User;
+import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,12 +13,16 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
+
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
@@ -32,9 +38,13 @@ class MealBookingControllerTest {
     @MockBean
     private MealBookingService mealBookingService;
 
+    @MockBean
+    private UserRepository userRepository;
+
     @Autowired
     private ObjectMapper objectMapper;
 
+    // ================= USER =================
     @Test
     @WithMockUser(
             username = "test.user@company.com",
@@ -43,63 +53,29 @@ class MealBookingControllerTest {
     void shouldBookMealsSuccessfully() throws Exception {
 
         // GIVEN
-        MealBookingRequestDTO request = new MealBookingRequestDTO();
-        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
-        request.setLatitude(10.0);
-        request.setLongitude(10.0);
+        User mockUser = new User(
+                1L,
+                "Test User",
+                "test.user@company.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findByEmail("test.user@company.com"))
+                .thenReturn(Optional.of(mockUser));
 
         doNothing().when(mealBookingService)
                 .bookMeals(
                         any(User.class),
-                        anyList(),
+                        any(LocalDate.class),
+                        any(LocalDate.class),
                         anyDouble(),
                         anyDouble()
                 );
 
+        MealBookingRequestDTO request = validRequest();
+
         // WHEN + THEN
-        mockMvc.perform(
-                        post("/api/meals/book")
-                                .with(csrf())   // ✅ THIS WAS MISSING
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message")
-                        .value("Meals booked successfully"))
-                .andExpect(jsonPath("$.dates").isArray());
-    }
-
-    // UNAUTHENTICATED → 401
-    @Test
-    void unauthenticatedUserCannotBookMeals() throws Exception {
-
-        MealBookingRequestDTO request = new MealBookingRequestDTO();
-        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
-        request.setLatitude(10.0);
-        request.setLongitude(10.0);
-
-        mockMvc.perform(
-                        post("/api/meals/book")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
-                )
-                .andExpect(status().isForbidden());
-    }
-
-
-    //ADMIN can also book meals
-    @Test
-    @WithMockUser(username = "admin@company.com", roles = "ADMIN")
-    void adminCanBookMeals() throws Exception {
-
-        MealBookingRequestDTO request = new MealBookingRequestDTO();
-        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
-        request.setLatitude(10.0);
-        request.setLongitude(10.0);
-
-        doNothing().when(mealBookingService)
-                .bookMeals(any(User.class), anyList(), anyDouble(), anyDouble());
-
         mockMvc.perform(
                         post("/api/meals/book")
                                 .with(csrf())
@@ -107,17 +83,63 @@ class MealBookingControllerTest {
                                 .content(objectMapper.writeValueAsString(request))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message")
-                        .value("Meals booked successfully"));
+                .andExpect(content().string("Meals booked successfully"));
     }
 
-    //Helper method
+    // ================= ADMIN =================
+    @Test
+    @WithMockUser(username = "admin@company.com", roles = "ADMIN")
+    void adminCanBookMeals() throws Exception {
+
+        User admin = new User(
+                2L,
+                "Admin",
+                "admin@company.com",
+                Role.ADMIN,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findByEmail("admin@company.com"))
+                .thenReturn(Optional.of(admin));
+
+        doNothing().when(mealBookingService)
+                .bookMeals(
+                        any(User.class),
+                        any(LocalDate.class),
+                        any(LocalDate.class),
+                        anyDouble(),
+                        anyDouble()
+                );
+
+        mockMvc.perform(
+                        post("/api/meals/book")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(validRequest()))
+                )
+                .andExpect(status().isOk())
+                .andExpect(content().string("Meals booked successfully"));
+    }
+
+    // ================= UNAUTH =================
+    @Test
+    void unauthenticatedUserCannotBookMeals() throws Exception {
+
+        mockMvc.perform(
+                        post("/api/meals/book")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(validRequest()))
+                )
+                .andExpect(status().isForbidden());
+    }
+
+    // ================= HELPER =================
     private MealBookingRequestDTO validRequest() {
         MealBookingRequestDTO request = new MealBookingRequestDTO();
-        request.setBookingDates(List.of(LocalDate.now().plusDays(2)));
+        request.setStartDate(LocalDate.now().plusDays(2));
+        request.setEndDate(LocalDate.now().plusDays(4));
         request.setLatitude(10.0);
         request.setLongitude(10.0);
         return request;
     }
-
 }
