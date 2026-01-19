@@ -19,4 +19,5 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
     );
 
     boolean existsByUserAndBookingDateAfter(User user, LocalDate date);
+
 }
