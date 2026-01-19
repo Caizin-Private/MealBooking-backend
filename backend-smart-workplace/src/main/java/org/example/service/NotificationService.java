@@ -1,0 +1,41 @@
+package org.example.service;
+
+import lombok.RequiredArgsConstructor;
+import org.example.entity.Notification;
+import org.example.entity.NotificationType;
+import org.example.repository.NotificationRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+
+    public void schedule(
+            Long userId,
+            String title,
+            String message,
+            NotificationType type,
+            LocalDateTime scheduleTime
+    ) {
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .title(title)
+                .message(message)
+                .type(type)
+                .scheduledAt(scheduleTime)
+                .sent(false)
+                .build();
+
+        notificationRepository.save(notification);
+    }
+
+    public void markAsSent(Notification notification) {
+        notification.setSent(true);
+        notification.setSentAt(LocalDateTime.now());
+        notificationRepository.save(notification);
+    }
+}

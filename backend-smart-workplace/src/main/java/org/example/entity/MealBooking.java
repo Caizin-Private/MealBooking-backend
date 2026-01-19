@@ -24,8 +24,10 @@ public class MealBooking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    /* ✅ Proper relation */
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "booking_date", nullable = false)
     private LocalDate bookingDate;
