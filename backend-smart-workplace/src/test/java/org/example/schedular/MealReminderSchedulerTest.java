@@ -85,4 +85,46 @@ class MealReminderSchedulerTest {
         verify(pushNotificationService, times(1))
                 .sendMealReminder(user.getId(), tomorrow);
     }
+
+    @Test
+    void reminderNotSentAfterCutoff() {
+
+        // ARRANGE — time after cutoff
+        Instant fixedInstant =
+                LocalDateTime.of(2026, 1, 18, 23, 0)
+                        .atZone(ZONE)
+                        .toInstant();
+
+        when(clock.instant()).thenReturn(fixedInstant);
+        when(clock.getZone()).thenReturn(ZONE);
+
+        LocalDate tomorrow = LocalDate.of(2026, 1, 19);
+
+        when(cutoffConfigRepository.findTopByOrderByIdDesc())
+                .thenReturn(Optional.of(
+                        CutoffConfig.builder()
+                                .cutoffTime(LocalTime.of(22, 0))
+                                .build()
+                ));
+
+        User user = new User(
+                1L,
+                "User",
+                "user@test.com",
+                Role.USER,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findAll()).thenReturn(List.of(user));
+        when(mealBookingRepository.existsByUserAndBookingDate(user, tomorrow))
+                .thenReturn(false);
+
+        // ACT
+        scheduler.sendMealBookingReminders();
+
+        // ASSERT
+        verify(pushNotificationService, never())
+                .sendMealReminder(anyLong(), any());
+    }
+
 }
