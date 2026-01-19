@@ -45,7 +45,6 @@ class MealBookingServiceTest {
 
     @BeforeEach
     void setup() {
-        // Default system time: 12:00 noon (before cutoff)
         Instant fixedInstant =
                 LocalDateTime.of(2026, 1, 18, 12, 0)
                         .atZone(ZONE)
@@ -65,36 +64,24 @@ class MealBookingServiceTest {
     }
 
     @Test
-    void userCanBookFutureDate() {
-        User user = new User(1L, "Test User", "test@test.com", Role.USER, LocalDateTime.now(clock));
+    void userCanBookFutureDates() {
+        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
 
-        LocalDate bookingDate = LocalDate.now(clock).plusDays(2);
-
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
-
-        mealBookingService.bookMeals(user, List.of(bookingDate), 10.0, 10.0);
-
-        verify(mealBookingRepository).save(any(MealBooking.class));
-    }
-
-    @Test
-    void adminCanBookFutureDate() {
-        User admin = new User(2L, "Admin", "admin@test.com", Role.ADMIN, LocalDateTime.now(clock));
-
-        LocalDate bookingDate = LocalDate.now(clock).plusDays(2);
+        LocalDate start = LocalDate.now(clock).plusDays(2);
+        LocalDate end = start.plusDays(2);
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(true);
 
-        when(mealBookingRepository.existsByUserIdAndBookingDate(admin.getId(), bookingDate))
-                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDate(
+                any(User.class),
+                any(LocalDate.class)
+        )).thenReturn(false);
 
-        mealBookingService.bookMeals(admin, List.of(bookingDate), 10.0, 10.0);
+        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
 
-        verify(mealBookingRepository).save(any(MealBooking.class));
+        verify(mealBookingRepository, times(3)).save(any(MealBooking.class));
     }
-
 
     @Test
     void bookingFailsWhenOutsideGeofence() {
@@ -106,7 +93,8 @@ class MealBookingServiceTest {
         assertThrows(RuntimeException.class,
                 () -> mealBookingService.bookMeals(
                         user,
-                        List.of(LocalDate.now(clock).plusDays(2)),
+                        LocalDate.now(clock).plusDays(2),
+                        LocalDate.now(clock).plusDays(3),
                         0.0,
                         0.0
                 )
@@ -115,7 +103,6 @@ class MealBookingServiceTest {
 
     @Test
     void bookingForTomorrowFailsAfterCutoff() {
-        // Simulate AFTER cutoff time (23:00)
         Instant afterCutoff =
                 LocalDateTime.of(2026, 1, 18, 23, 0)
                         .atZone(ZONE)
@@ -131,7 +118,8 @@ class MealBookingServiceTest {
         assertThrows(RuntimeException.class,
                 () -> mealBookingService.bookMeals(
                         user,
-                        List.of(LocalDate.now(clock).plusDays(1)),
+                        LocalDate.now(clock).plusDays(1),
+                        LocalDate.now(clock).plusDays(1),
                         10.0,
                         10.0
                 )
@@ -142,18 +130,21 @@ class MealBookingServiceTest {
     void duplicateBookingFails() {
         User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
 
-        LocalDate bookingDate = LocalDate.now(clock).plusDays(2);
+        LocalDate date = LocalDate.now(clock).plusDays(2);
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(true);
 
-        when(mealBookingRepository.existsByUserIdAndBookingDate(user.getId(), bookingDate))
-                .thenReturn(true);
+        when(mealBookingRepository.existsByUserAndBookingDate(
+                any(User.class),
+                any(LocalDate.class)
+        )).thenReturn(true);
 
         assertThrows(RuntimeException.class,
                 () -> mealBookingService.bookMeals(
                         user,
-                        List.of(bookingDate),
+                        date,
+                        date,
                         10.0,
                         10.0
                 )
@@ -164,38 +155,45 @@ class MealBookingServiceTest {
     void pushNotificationSentAfterSuccessfulBooking() {
         User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
 
-        LocalDate bookingDate = LocalDate.now(clock).plusDays(2);
+        LocalDate start = LocalDate.now(clock).plusDays(2);
+        LocalDate end = start.plusDays(1);
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(true);
 
-        when(mealBookingRepository.existsByUserIdAndBookingDate(user.getId(), bookingDate))
-                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDate(
+                any(User.class),
+                any(LocalDate.class)
+        )).thenReturn(false);
 
-        mealBookingService.bookMeals(user, List.of(bookingDate), 10.0, 10.0);
+        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
 
         verify(pushNotificationService, times(1))
-                .sendBookingConfirmation(user.getId(), List.of(bookingDate));
+                .sendBookingConfirmation(
+                        eq(user.getId()),
+                        eq(start),
+                        eq(end)
+                );
+
     }
 
     @Test
     void multipleDatesAreSavedIndividually() {
         User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
 
-        List<LocalDate> dates = List.of(
-                LocalDate.now(clock).plusDays(2),
-                LocalDate.now(clock).plusDays(3),
-                LocalDate.now(clock).plusDays(5)
-        );
+        LocalDate start = LocalDate.now(clock).plusDays(2);
+        LocalDate end = start.plusDays(3); // 4 days total
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(true);
 
-        when(mealBookingRepository.existsByUserIdAndBookingDate(anyLong(), any(LocalDate.class)))
-                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDate(
+                any(User.class),
+                any(LocalDate.class)
+        )).thenReturn(false);
 
-        mealBookingService.bookMeals(user, dates, 10.0, 10.0);
+        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
 
-        verify(mealBookingRepository, times(3)).save(any(MealBooking.class));
+        verify(mealBookingRepository, times(4)).save(any(MealBooking.class));
     }
 }
