@@ -109,4 +109,25 @@ public class MealBookingServiceImpl implements MealBookingService {
             throw new RuntimeException("Meal already booked for " + date);
         }
     }
+
+    public void cancelMeal(User user, LocalDate date) {
+
+        LocalDate today = LocalDate.now(clock);
+
+        if (date.isBefore(today)) {
+            throw new RuntimeException("Past bookings cannot be cancelled");
+        }
+
+        MealBooking booking =
+                mealBookingRepository
+                        .findByUserAndBookingDate(user, date)
+                        .orElseThrow(() -> new RuntimeException("No booking found for this date"));
+
+        mealBookingRepository.delete(booking);
+
+        pushNotificationService.sendCancellationConfirmation(
+                user.getId(),
+                date
+        );
+    }
 }
