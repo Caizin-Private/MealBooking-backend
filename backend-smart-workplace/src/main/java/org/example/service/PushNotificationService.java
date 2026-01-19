@@ -15,5 +15,7 @@ public interface PushNotificationService {
 
     void sendMissedBookingNotification(Long userId, LocalDate date);
 
+    void sendInactivityNudge(Long userId);
+
 
 }
