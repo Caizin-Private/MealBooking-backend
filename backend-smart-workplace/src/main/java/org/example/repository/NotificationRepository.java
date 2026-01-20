@@ -20,4 +20,7 @@ public interface NotificationRepository
             LocalDateTime start,
             LocalDateTime end
     );
+
+    List<Notification> findByUserIdOrderBySentAtDesc(Long userId);
+
 }

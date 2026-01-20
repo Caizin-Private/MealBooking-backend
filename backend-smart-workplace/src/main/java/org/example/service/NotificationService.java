@@ -6,6 +6,7 @@ import org.example.entity.NotificationType;
 import org.example.repository.NotificationRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 
 @Service
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final Clock clock;
 
     public void schedule(
             Long userId,
@@ -35,7 +37,7 @@ public class NotificationService {
 
     public void markAsSent(Notification notification) {
         notification.setSent(true);
-        notification.setSentAt(LocalDateTime.now());
+        notification.setSentAt(LocalDateTime.now(clock));
         notificationRepository.save(notification);
     }
 }
