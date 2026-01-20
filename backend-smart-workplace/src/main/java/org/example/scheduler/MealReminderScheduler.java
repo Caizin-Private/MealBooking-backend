@@ -9,6 +9,7 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,8 @@ public class MealReminderScheduler {
     private final MealBookingRepository mealBookingRepository;
     private final PushNotificationService pushNotificationService;
     private final CutoffConfigRepository cutoffConfigRepository;
-    private final NotificationRepository notificationRepository; // 👈 ADD THIS
+    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Scheduled(cron = "0 0 18 * * *") // 6 PM
@@ -79,17 +81,14 @@ public class MealReminderScheduler {
                 return;
             }
 
-            notificationRepository.save(
-                    Notification.builder()
-                            .userId(user.getId())
-                            .title("Meal booking reminder")
-                            .message("Please book your meal for " + tomorrow)
-                            .type(NotificationType.MEAL_REMINDER)
-                            .scheduledAt(LocalDateTime.now(clock))
-                            .sent(false)
-                            .sentAt(null)
-                            .build()
+            notificationService.schedule(
+                    user.getId(),
+                    "Meal booking reminder",
+                    "Please book your meal for " + tomorrow,
+                    NotificationType.MEAL_REMINDER,
+                    LocalDateTime.now(clock)
             );
+
 
             pushNotificationService.sendMealReminder(user.getId(), tomorrow);
         });
