@@ -1,4 +1,5 @@
 package org.example.scheduler;
+
 import lombok.RequiredArgsConstructor;
 import org.example.entity.Notification;
 import org.example.entity.NotificationType;
@@ -6,6 +7,7 @@ import org.example.entity.Role;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -22,6 +24,7 @@ public class MealInactivityScheduler {
     private final MealBookingRepository mealBookingRepository;
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     private static final int INACTIVITY_DAYS = 3;
@@ -30,7 +33,10 @@ public class MealInactivityScheduler {
     public void sendInactivityNudges() {
 
         LocalDate today = LocalDate.now(clock);
+
+        // ✔ Correct inactivity window
         LocalDate fromDate = today.minusDays(INACTIVITY_DAYS);
+        LocalDate toDate = today.minusDays(1);
 
         userRepository.findAll().forEach(user -> {
 
@@ -42,14 +48,15 @@ public class MealInactivityScheduler {
                     mealBookingRepository.existsByUserAndBookingDateBetween(
                             user,
                             fromDate,
-                            today
+                            toDate
                     );
 
+            // ✔ IMPORTANT early return
             if (hasRecentBooking) {
                 return;
             }
 
-            // ---------- IDPOTENCY CHECK ----------
+            // ---------- IDEMPOTENCY CHECK ----------
             LocalDateTime start = today.atStartOfDay();
             LocalDateTime end = today.atTime(23, 59, 59);
 
@@ -66,17 +73,14 @@ public class MealInactivityScheduler {
             }
 
             // ---------- SAVE NOTIFICATION ----------
-            notificationRepository.save(
-                    Notification.builder()
-                            .userId(user.getId())
-                            .title("We miss you!")
-                            .message("You haven’t booked meals recently. Stay on track!")
-                            .type(NotificationType.INACTIVITY_NUDGE)
-                            .scheduledAt(LocalDateTime.now(clock))
-                            .sent(true)
-                            .sentAt(LocalDateTime.now(clock))
-                            .build()
+            notificationService.schedule(
+                    user.getId(),
+                    "We miss you!",
+                    "You haven’t booked meals in the last few days.",
+                    NotificationType.INACTIVITY_NUDGE,
+                    LocalDateTime.now(clock)
             );
+
 
             pushNotificationService.sendInactivityNudge(user.getId());
         });

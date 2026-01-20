@@ -1,15 +1,19 @@
 package org.example.scheduler;
 
+import org.example.entity.NotificationType;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
+import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 
 import java.time.*;
 import java.util.List;
@@ -17,7 +21,8 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@Import(FixedClockConfig.class)
 class MealInactivitySchedulerTest {
 
     @MockBean
@@ -27,10 +32,7 @@ class MealInactivitySchedulerTest {
     private MealBookingRepository mealBookingRepository;
 
     @MockBean
-    private PushNotificationService pushNotificationService;
-
-    @MockBean
-    private CutoffConfigRepository cutoffConfigRepository;
+    private NotificationService notificationService;
 
     @MockBean
     private Clock clock;
@@ -38,16 +40,14 @@ class MealInactivitySchedulerTest {
     @Autowired
     private MealInactivityScheduler inactivityScheduler;
 
-
     private final ZoneId ZONE = ZoneId.of("UTC");
 
     @Test
-    void inactivityNudgeSentWhenUserHasNoBookingsInLast3Days() {
-        // ARRANGE
-        Instant now =
-                LocalDateTime.of(2026, 1, 18, 10, 0)
-                        .atZone(ZONE)
-                        .toInstant();
+    void inactivityNudgeScheduledWhenUserHasNoBookingsInLast3Days() {
+
+        Instant now = LocalDateTime.of(2026, 1, 18, 10, 0)
+                .atZone(ZONE)
+                .toInstant();
 
         when(clock.instant()).thenReturn(now);
         when(clock.getZone()).thenReturn(ZONE);
@@ -60,26 +60,87 @@ class MealInactivitySchedulerTest {
                 LocalDateTime.now()
         );
 
-        when(userRepository.findAll())
-                .thenReturn(List.of(user));
+        when(userRepository.findAll()).thenReturn(List.of(user));
 
-        when(mealBookingRepository
-                .existsByUserAndBookingDateBetween(
-                        eq(user),
-                        eq(LocalDate.of(2026, 1, 15)),
-                        eq(LocalDate.of(2026, 1, 17))
-                ))
-                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDateBetween(
+                eq(user),
+                eq(LocalDate.of(2026, 1, 15)),
+                eq(LocalDate.of(2026, 1, 18))
+        )).thenReturn(false);
 
-        // ACT
         inactivityScheduler.sendInactivityNudges();
 
-        // ASSERT
-        verify(pushNotificationService, times(1))
-                .sendInactivityNudge(user.getId());
+        verify(notificationService, times(1)).schedule(
+                eq(user.getId()),
+                eq("We miss you!"),
+                eq("You haven’t booked meals in the last few days."),
+                eq(NotificationType.INACTIVITY_NUDGE),
+                any(LocalDateTime.class)
+        );
     }
 
+    @Test
+    void inactivityNudgeNotScheduledWhenUserBookedRecently() {
 
+        setupClock();
 
+        User user = user(Role.USER);
 
+        when(userRepository.findAll()).thenReturn(List.of(user));
+
+        when(mealBookingRepository.existsByUserAndBookingDateBetween(
+                any(), any(), any()
+        )).thenReturn(true);
+
+        inactivityScheduler.sendInactivityNudges();
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void inactivityNudgeNotScheduledForAdminUser() {
+
+        setupClock();
+
+        User admin = user(Role.ADMIN);
+
+        when(userRepository.findAll()).thenReturn(List.of(admin));
+
+        inactivityScheduler.sendInactivityNudges();
+
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void inactivityNudgeNotScheduledWhenNoUsersExist() {
+
+        setupClock();
+
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        inactivityScheduler.sendInactivityNudges();
+
+        verifyNoInteractions(notificationService);
+    }
+
+    // ---------- HELPERS ----------
+
+    private void setupClock() {
+        Instant now = LocalDateTime.of(2026, 1, 18, 10, 0)
+                .atZone(ZONE)
+                .toInstant();
+
+        when(clock.instant()).thenReturn(now);
+        when(clock.getZone()).thenReturn(ZONE);
+    }
+
+    private User user(Role role) {
+        return new User(
+                1L,
+                "Test",
+                "test@test.com",
+                role,
+                LocalDateTime.now()
+        );
+    }
 }
