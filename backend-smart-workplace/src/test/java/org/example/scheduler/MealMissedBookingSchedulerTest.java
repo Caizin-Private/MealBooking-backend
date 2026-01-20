@@ -8,11 +8,14 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.*;
 import java.util.List;
@@ -21,7 +24,9 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@Import(FixedClockConfig.class)
+@ActiveProfiles("test")
 class MealMissedBookingSchedulerTest {
 
     @MockBean
@@ -31,28 +36,23 @@ class MealMissedBookingSchedulerTest {
     private MealBookingRepository mealBookingRepository;
 
     @MockBean
-    private PushNotificationService pushNotificationService;
+    private CutoffConfigRepository cutoffConfigRepository;
 
     @MockBean
-    private CutoffConfigRepository cutoffConfigRepository;
+    private NotificationService notificationService;
 
     @MockBean
     private Clock clock;
 
-    @MockBean
-    private NotificationRepository notificationRepository;
-
-
     @Autowired
     private MealMissedBookingScheduler missedScheduler;
-
 
     private final ZoneId ZONE = ZoneId.of("UTC");
 
     @Test
-    void missedBookingSentAfterCutoffWhenUserHasNotBooked() {
+    void missedBookingScheduledAfterCutoffWhenUserHasNotBooked() {
 
-        // ---------- ARRANGE ----------
+        // ARRANGE
         Instant afterCutoff =
                 LocalDateTime.of(2026, 1, 18, 23, 0)
                         .atZone(ZONE)
@@ -78,55 +78,43 @@ class MealMissedBookingSchedulerTest {
                 LocalDateTime.now()
         );
 
-        when(userRepository.findAll())
-                .thenReturn(List.of(user));
-
+        when(userRepository.findAll()).thenReturn(List.of(user));
         when(mealBookingRepository.existsByUserAndBookingDate(user, today))
                 .thenReturn(false);
 
-        // ---------- ACT ----------
+        // ACT
         missedScheduler.sendMissedMealBookingNotifications();
 
-        // ---------- ASSERT ----------
-        verify(pushNotificationService, times(1))
-                .sendMissedBookingNotification(user.getId(), today);
+        // ASSERT
+        verify(notificationService, times(1))
+                .schedule(
+                        eq(user.getId()),
+                        eq("Meal booking missed"),
+                        eq("You missed booking your meal for today."),
+                        eq(NotificationType.MISSED_BOOKING),
+                        eq(today.atStartOfDay())
+                );
     }
 
     @Test
-    void missedBookingNotSentWhenUserAlreadyBooked() {
+    void missedBookingNotScheduledWhenUserAlreadyBooked() {
 
-        Instant afterCutoff =
-                LocalDateTime.of(2026, 1, 18, 23, 0)
-                        .atZone(ZONE)
-                        .toInstant();
-
-        when(clock.instant()).thenReturn(afterCutoff);
-        when(clock.getZone()).thenReturn(ZONE);
-
-        LocalDate today = LocalDate.of(2026, 1, 18);
-
-        when(cutoffConfigRepository.findTopByOrderByIdDesc())
-                .thenReturn(Optional.of(
-                        CutoffConfig.builder()
-                                .cutoffTime(LocalTime.of(22, 0))
-                                .build()
-                ));
+        setupAfterCutoff();
 
         User user = new User(1L, "User", "u@test.com", Role.USER, LocalDateTime.now());
-
         when(userRepository.findAll()).thenReturn(List.of(user));
 
-        when(mealBookingRepository.existsByUserAndBookingDate(user, today))
-                .thenReturn(true); // already booked
+        when(mealBookingRepository.existsByUserAndBookingDate(
+                eq(user), any(LocalDate.class)))
+                .thenReturn(true);
 
         missedScheduler.sendMissedMealBookingNotifications();
 
-        verify(pushNotificationService, never())
-                .sendMissedBookingNotification(anyLong(), any());
+        verifyNoInteractions(notificationService);
     }
 
     @Test
-    void missedBookingNotSentBeforeCutoff() {
+    void missedBookingNotScheduledBeforeCutoff() {
 
         Instant beforeCutoff =
                 LocalDateTime.of(2026, 1, 18, 20, 0)
@@ -143,25 +131,27 @@ class MealMissedBookingSchedulerTest {
                                 .build()
                 ));
 
-        User user = new User(1L, "User", "u@test.com", Role.USER, LocalDateTime.now());
-        when(userRepository.findAll()).thenReturn(List.of(user));
-
-        when(notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
-                eq(user.getId()),
-                eq(NotificationType.MISSED_BOOKING),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class)
-        )).thenReturn(false);
-
         missedScheduler.sendMissedMealBookingNotifications();
 
-        verify(pushNotificationService, never())
-                .sendMissedBookingNotification(anyLong(), any());
+        verifyNoInteractions(notificationService);
     }
 
     @Test
-    void missedBookingNotSentForAdmin() {
+    void missedBookingNotScheduledForAdmin() {
 
+        setupAfterCutoff();
+
+        User admin =
+                new User(1L, "Admin", "a@test.com", Role.ADMIN, LocalDateTime.now());
+
+        when(userRepository.findAll()).thenReturn(List.of(admin));
+
+        missedScheduler.sendMissedMealBookingNotifications();
+
+        verifyNoInteractions(notificationService);
+    }
+
+    private void setupAfterCutoff() {
         Instant afterCutoff =
                 LocalDateTime.of(2026, 1, 18, 23, 0)
                         .atZone(ZONE)
@@ -176,15 +166,5 @@ class MealMissedBookingSchedulerTest {
                                 .cutoffTime(LocalTime.of(22, 0))
                                 .build()
                 ));
-
-        User admin = new User(1L, "Admin", "a@test.com", Role.ADMIN, LocalDateTime.now());
-        when(userRepository.findAll()).thenReturn(List.of(admin));
-
-        missedScheduler.sendMissedMealBookingNotifications();
-
-        verify(pushNotificationService, never())
-                .sendMissedBookingNotification(anyLong(), any());
     }
-
-
 }

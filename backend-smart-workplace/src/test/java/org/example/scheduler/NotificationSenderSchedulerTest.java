@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -18,9 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(
-        properties = "spring.task.scheduling.enabled=false"
-)
+@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@Import(FixedClockConfig.class)
 class NotificationSenderSchedulerTest {
 
     @MockBean
