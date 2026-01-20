@@ -7,6 +7,7 @@ import org.example.entity.Role;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class MealInactivityScheduler {
     private final MealBookingRepository mealBookingRepository;
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     private static final int INACTIVITY_DAYS = 3;
@@ -71,17 +73,14 @@ public class MealInactivityScheduler {
             }
 
             // ---------- SAVE NOTIFICATION ----------
-            notificationRepository.save(
-                    Notification.builder()
-                            .userId(user.getId())
-                            .title("We miss you!")
-                            .message("You haven’t booked meals in the last few days.")
-                            .type(NotificationType.INACTIVITY_NUDGE)
-                            .scheduledAt(LocalDateTime.now(clock))
-                            .sent(false)
-                            .sentAt(null)
-                            .build()
+            notificationService.schedule(
+                    user.getId(),
+                    "We miss you!",
+                    "You haven’t booked meals in the last few days.",
+                    NotificationType.INACTIVITY_NUDGE,
+                    LocalDateTime.now(clock)
             );
+
 
             pushNotificationService.sendInactivityNudge(user.getId());
         });

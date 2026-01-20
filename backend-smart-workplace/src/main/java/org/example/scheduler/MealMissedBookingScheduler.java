@@ -5,6 +5,7 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ public class MealMissedBookingScheduler {
     private final NotificationRepository notificationRepository;
     private final CutoffConfigRepository cutoffConfigRepository;
     private final PushNotificationService pushNotificationService;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Scheduled(cron = "0 30 22 * * *") // 10:30 PM
@@ -75,16 +77,12 @@ public class MealMissedBookingScheduler {
             }
 
             // ---------- SAVE NOTIFICATION ----------
-            notificationRepository.save(
-                    Notification.builder()
-                            .userId(user.getId())
-                            .title("Meal booking missed")
-                            .message("You missed booking your meal for today.")
-                            .type(NotificationType.MISSED_BOOKING)
-                            .scheduledAt(today.atStartOfDay()) // 👈 business date
-                            .sent(false)
-                            .sentAt(null)
-                            .build()
+            notificationService.schedule(
+                    user.getId(),
+                    "Meal booking missed",
+                    "You missed booking your meal for today.",
+                    NotificationType.MISSED_BOOKING,
+                    today.atStartOfDay()   // business date (important)
             );
 
             // ---------- SEND ----------
