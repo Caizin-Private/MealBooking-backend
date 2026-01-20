@@ -40,17 +40,9 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
     @Override
     public void sendMealReminder(Long userId, LocalDate date) {
-
-        Notification notification = Notification.builder()
-                .userId(userId)
-                .title("Meal booking reminder")
-                .message("Please book your meal for " + date)
-                .type(NotificationType.MEAL_REMINDER)
-                .sent(false)
-                .scheduledAt(LocalDateTime.now())
-                .build();
-
-        notificationRepository.save(notification);
+        System.out.println(
+                "[PUSH] Meal reminder sent to user " + userId + " for " + date
+        );
     }
 
     @Override
