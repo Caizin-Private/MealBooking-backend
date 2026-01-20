@@ -1,10 +1,12 @@
 package org.example.repository;
 
+import org.example.entity.BookingStatus;
 import org.example.entity.MealBooking;
 import org.example.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface MealBookingRepository extends JpaRepository<MealBooking, Long> {
@@ -19,5 +21,17 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
     );
 
     boolean existsByUserAndBookingDateAfter(User user, LocalDate date);
+
+    List<MealBooking> findByBookingDateAndStatus(
+            LocalDate bookingDate,
+            BookingStatus status
+    );
+
+    boolean existsByUserAndBookingDateAndStatus(
+            User user,
+            LocalDate bookingDate,
+            BookingStatus status
+    );
+
 
 }
