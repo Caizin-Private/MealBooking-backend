@@ -9,9 +9,11 @@ import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.example.entity.Notification;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -27,15 +29,21 @@ public class MealReminderScheduler {
     private final MealBookingRepository mealBookingRepository;
     private final PushNotificationService pushNotificationService;
     private final CutoffConfigRepository cutoffConfigRepository;
-    private final NotificationRepository notificationRepository; // 👈 ADD THIS
+    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final Clock clock;
 
     @Scheduled(cron = "0 0 18 * * *") // 6 PM
     public void sendMealBookingReminders() {
 
-        CutoffConfig cutoffConfig = cutoffConfigRepository
-                .findTopByOrderByIdDesc()
-                .orElseThrow();
+        Optional<CutoffConfig> cutoffOpt =
+                cutoffConfigRepository.findTopByOrderByIdDesc();
+
+        if (cutoffOpt.isEmpty()) {
+            return;
+        }
+
+        CutoffConfig cutoffConfig = cutoffOpt.get();
 
         LocalTime now = LocalTime.now(clock);
         if (now.isAfter(cutoffConfig.getCutoffTime())) {
@@ -57,7 +65,7 @@ public class MealReminderScheduler {
                 return;
             }
 
-            // ---------- IDPOTENCY CHECK ----------
+            // idempotency check
             LocalDateTime startOfDay = tomorrow.atStartOfDay();
             LocalDateTime endOfDay = tomorrow.atTime(23, 59, 59);
 
@@ -73,21 +81,18 @@ public class MealReminderScheduler {
                 return;
             }
 
-            // ---------- CREATE NOTIFICATION ----------
-            notificationRepository.save(
-                    Notification.builder()
-                            .userId(user.getId())
-                            .title("Meal booking reminder")
-                            .message("Please book your meal for " + tomorrow)
-                            .type(NotificationType.MEAL_REMINDER)
-                            .scheduledAt(LocalDateTime.now(clock))
-                            .sent(true)
-                            .sentAt(LocalDateTime.now(clock))
-                            .build()
+            notificationService.schedule(
+                    user.getId(),
+                    "Meal booking reminder",
+                    "Please book your meal for " + tomorrow,
+                    NotificationType.MEAL_REMINDER,
+                    LocalDateTime.now(clock)
             );
+
 
             pushNotificationService.sendMealReminder(user.getId(), tomorrow);
         });
     }
+
 
 }

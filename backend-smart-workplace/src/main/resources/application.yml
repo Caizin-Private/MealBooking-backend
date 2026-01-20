@@ -3,6 +3,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/smart_workplace
     username: sw_user
     password: sw_pass
+  task:
+    scheduling:
+      enabled: false
 
   jpa:
     hibernate:
