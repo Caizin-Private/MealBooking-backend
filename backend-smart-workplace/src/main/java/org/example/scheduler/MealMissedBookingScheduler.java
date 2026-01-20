@@ -1,4 +1,5 @@
 package org.example.scheduler;
+
 import lombok.RequiredArgsConstructor;
 import org.example.entity.*;
 import org.example.repository.CutoffConfigRepository;
@@ -10,11 +11,7 @@ import org.example.service.PushNotificationService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.Optional;
+import java.time.*;
 
 @Component
 @RequiredArgsConstructor
@@ -28,23 +25,15 @@ public class MealMissedBookingScheduler {
     private final NotificationService notificationService;
     private final Clock clock;
 
-    @Scheduled(cron = "0 30 22 * * *") // 10:30 PM
+    @Scheduled(cron = "*/3 * * * * *")// 10:30 PM
     public void sendMissedMealBookingNotifications() {
 
-        Optional<CutoffConfig> cutoffOpt =
-                cutoffConfigRepository.findTopByOrderByIdDesc();
+        // ---------- CUTOFF CONFIG ----------
+        var cutoffOpt = cutoffConfigRepository.findTopByOrderByIdDesc();
+        if (cutoffOpt.isEmpty()) return;
 
-        if (cutoffOpt.isEmpty()) {
-            return; // ✅ NEVER throw from schedulers
-        }
-
-        CutoffConfig cutoffConfig = cutoffOpt.get();
         LocalTime now = LocalTime.now(clock);
-
-        // Only AFTER cutoff
-        if (now.isBefore(cutoffConfig.getCutoffTime())) {
-            return;
-        }
+        if (now.isBefore(cutoffOpt.get().getCutoffTime())) return;
 
         LocalDate today = LocalDate.now(clock);
         LocalDateTime startOfDay = today.atStartOfDay();
@@ -52,18 +41,34 @@ public class MealMissedBookingScheduler {
 
         userRepository.findAll().forEach(user -> {
 
-            if (user.getRole() != Role.USER) {
-                return;
-            }
+            // ---------- ONLY USERS ----------
+            if (user.getRole() != Role.USER) return;
 
+            // ---------- IF BOOKED, SKIP ----------
             boolean booked =
                     mealBookingRepository.existsByUserAndBookingDate(user, today);
+            if (booked) return;
 
-            if (booked) {
-                return;
-            }
+            // ---------- IF ALREADY MARKED MISSED, SKIP ----------
+            boolean alreadyMissed =
+                    mealBookingRepository.existsByUserAndBookingDateAndStatus(
+                            user,
+                            today,
+                            BookingStatus.MISSED
+                    );
+            if (alreadyMissed) return;
 
-            // ---------- IDEMPOTENCY CHECK ----------
+            // ---------- CREATE MISSED BOOKING ----------
+            MealBooking missedBooking = MealBooking.builder()
+                    .user(user)
+                    .bookingDate(today)
+                    .bookedAt(LocalDateTime.now(clock))
+                    .status(BookingStatus.MISSED)
+                    .build();
+
+            mealBookingRepository.save(missedBooking);
+
+            // ---------- NOTIFICATION IDEMPOTENCY ----------
             boolean alreadyNotified =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
@@ -71,10 +76,7 @@ public class MealMissedBookingScheduler {
                             startOfDay,
                             endOfDay
                     );
-
-            if (alreadyNotified) {
-                return;
-            }
+            if (alreadyNotified) return;
 
             // ---------- SAVE NOTIFICATION ----------
             notificationService.schedule(
@@ -82,10 +84,10 @@ public class MealMissedBookingScheduler {
                     "Meal booking missed",
                     "You missed booking your meal for today.",
                     NotificationType.MISSED_BOOKING,
-                    today.atStartOfDay()   // business date (important)
+                    today.atStartOfDay()
             );
 
-            // ---------- SEND ----------
+            // ---------- PUSH ----------
             pushNotificationService.sendMissedBookingNotification(
                     user.getId(),
                     today
@@ -93,4 +95,3 @@ public class MealMissedBookingScheduler {
         });
     }
 }
-
