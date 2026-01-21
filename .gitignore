@@ -9,7 +9,7 @@ target/
 build/
 .gradle/
 
-# Logs
+
 *.log
 
 
