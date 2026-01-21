@@ -6,5 +6,6 @@ public enum NotificationType {
     CUTOFF_REMINDER,
     MEAL_REMINDER,
     MISSED_BOOKING,
-    INACTIVITY_NUDGE
+    INACTIVITY_NUDGE,
+    LUNCH_DEFAULTED
 }
