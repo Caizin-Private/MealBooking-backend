@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(MealBookingController.class)
+@ActiveProfiles("test")
 class MealBookingControllerTest {
 
     @Autowired
@@ -70,17 +72,15 @@ class MealBookingControllerTest {
     void adminCanBookMeals() throws Exception {
 
         when(userRepository.findByEmail("admin@company.com"))
-                .thenReturn(new Optional[]{
-                        Optional.of(
-                                new User(
-                                        2L,
-                                        "Admin",
-                                        "admin@company.com",
-                                        Role.ADMIN,
-                                        LocalDateTime.now()
-                                )
+                .thenReturn(Optional.of(
+                        new User(
+                                2L,
+                                "Admin",
+                                "admin@company.com",
+                                Role.ADMIN,
+                                LocalDateTime.now()
                         )
-                }[0]);
+                ));
 
         doNothing().when(mealBookingService)
                 .bookMeals(any(), any(), any(), anyDouble(), anyDouble());

@@ -6,6 +6,7 @@ import org.example.entity.Notification;
 import org.example.repository.NotificationRepository;
 import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "spring.task.scheduling", name = "enabled", havingValue = "true")
 public class NotificationSenderScheduler {
 
     private final NotificationRepository notificationRepository;
