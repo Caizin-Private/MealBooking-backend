@@ -14,7 +14,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
+/**
+ * Maps Azure AD roles/scopes to Spring Security authorities.
+ */
 public final class AzureRoleConverter {
 
     private AzureRoleConverter() {
