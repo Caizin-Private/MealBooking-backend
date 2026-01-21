@@ -25,7 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@SpringBootTest(properties = "spring.task.scheduling.enabled=true")
 @Import(FixedClockConfig.class)   // fixed time: 2026-01-18T18:00Z
 @ActiveProfiles("test")
 class MealReminderSchedulerTest {

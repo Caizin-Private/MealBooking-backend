@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/smart_workplace
-    username: sw_user
-    password: sw_pass
+    # Provide Railway credentials via env vars at runtime (never in tests).
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/smart_workplace}
+    username: ${SPRING_DATASOURCE_USERNAME:sw_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:sw_pass}
 
   task:
     scheduling:
