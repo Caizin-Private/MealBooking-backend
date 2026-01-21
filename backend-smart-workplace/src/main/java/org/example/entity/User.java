@@ -24,8 +24,11 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-//    @Column(nullable = false)
-//    private String password;
+    private String authProvider;
+
+    private String providerUserId;
+
+    private String pictureUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -33,4 +36,13 @@ public class User {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    private LocalDateTime lastLoginAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }
