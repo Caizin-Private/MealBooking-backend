@@ -17,5 +17,7 @@ public interface PushNotificationService {
 
     void sendInactivityNudge(Long userId);
 
+    void sendLunchDefaultedNotification(Long userId, LocalDate date);
+
 
 }
