@@ -63,8 +63,12 @@ class MealInactivitySchedulerTest {
                 1L,
                 "User",
                 "user@test.com",
+                null,
+                null,
+                null,
                 Role.USER,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -146,8 +150,12 @@ class MealInactivitySchedulerTest {
                 1L,
                 "Test",
                 "test@test.com",
+                null,
+                null,
+                null,
                 role,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
     }
 }

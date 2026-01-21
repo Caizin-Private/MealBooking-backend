@@ -74,8 +74,12 @@ class MealMissedBookingSchedulerTest {
                 1L,
                 "User",
                 "user@test.com",
+                null,
+                null,
+                null,
                 Role.USER,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -101,7 +105,7 @@ class MealMissedBookingSchedulerTest {
 
         setupAfterCutoff();
 
-        User user = new User(1L, "User", "u@test.com", Role.USER, LocalDateTime.now());
+        User user = new User(1L, "User", "u@test.com", null, null, null, Role.USER, LocalDateTime.now(), null);
         when(userRepository.findAll()).thenReturn(List.of(user));
 
         when(mealBookingRepository.existsByUserAndBookingDate(
@@ -142,7 +146,7 @@ class MealMissedBookingSchedulerTest {
         setupAfterCutoff();
 
         User admin =
-                new User(1L, "Admin", "a@test.com", Role.ADMIN, LocalDateTime.now());
+                new User(1L, "Admin", "a@test.com", null, null, null, Role.ADMIN, LocalDateTime.now(), null);
 
         when(userRepository.findAll()).thenReturn(List.of(admin));
 

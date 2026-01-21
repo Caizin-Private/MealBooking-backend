@@ -70,8 +70,12 @@ class MealReminderSchedulerTest {
                 1L,
                 "User",
                 "user@test.com",
+                null,
+                null,
+                null,
                 Role.USER,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -116,7 +120,7 @@ class MealReminderSchedulerTest {
                 ));
 
         User user = new User(
-                1L, "User", "u@test.com", Role.USER, LocalDateTime.now()
+                1L, "User", "u@test.com", null, null, null, Role.USER, LocalDateTime.now(), null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -140,7 +144,7 @@ class MealReminderSchedulerTest {
                 ));
 
         User user = new User(
-                1L, "User", "u@test.com", Role.USER, LocalDateTime.now()
+                1L, "User", "u@test.com", null, null, null, Role.USER, LocalDateTime.now(), null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(user));
@@ -176,7 +180,7 @@ class MealReminderSchedulerTest {
                 ));
 
         User admin = new User(
-                1L, "Admin", "admin@test.com", Role.ADMIN, LocalDateTime.now()
+                1L, "Admin", "admin@test.com", null, null, null, Role.ADMIN, LocalDateTime.now(), null
         );
 
         when(userRepository.findAll()).thenReturn(List.of(admin));
