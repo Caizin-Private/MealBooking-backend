@@ -2,7 +2,7 @@ spring:
   datasource:
     url: postgresql://postgres:XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf@postgres.railway.internal:5432/railway
     username: postgres
-    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMuLFf
+    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
 
   task:
     scheduling:
