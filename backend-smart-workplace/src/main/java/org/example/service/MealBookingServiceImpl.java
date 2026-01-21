@@ -76,6 +76,7 @@ public class MealBookingServiceImpl implements MealBookingService {
                     .bookingDate(date)
                     .bookedAt(LocalDateTime.now(clock))
                     .status(BookingStatus.BOOKED)
+                    .availableForLunch(false)
                     .build();
 
             mealBookingRepository.save(booking);
