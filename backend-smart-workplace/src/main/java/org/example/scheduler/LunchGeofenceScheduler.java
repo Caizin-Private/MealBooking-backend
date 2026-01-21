@@ -12,6 +12,7 @@ import org.example.repository.UserLocationRepository;
 import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.example.utils.GeoUtils;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "spring.task.scheduling", name = "enabled", havingValue = "true")
 public class LunchGeofenceScheduler {
 
     private final MealBookingRepository mealBookingRepository;
