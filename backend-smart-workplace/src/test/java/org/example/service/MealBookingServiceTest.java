@@ -68,7 +68,7 @@ class MealBookingServiceTest {
 
     @Test
     void userCanBookFutureDates() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
 
         LocalDate start = LocalDate.now(clock).plusDays(2);
         LocalDate end = start.plusDays(2);
@@ -88,7 +88,7 @@ class MealBookingServiceTest {
 
     @Test
     void bookingFailsWhenOutsideGeofence() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
                 .thenReturn(false);
@@ -117,7 +117,7 @@ class MealBookingServiceTest {
         when(clock.getZone()).thenReturn(ZONE);
 
         User user = new User(
-                1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock)
+                1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null
         );
 
         when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
@@ -137,7 +137,7 @@ class MealBookingServiceTest {
 
     @Test
     void duplicateBookingFails() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
 
         LocalDate date = LocalDate.now(clock).plusDays(2);
 
@@ -162,7 +162,7 @@ class MealBookingServiceTest {
 
     @Test
     void pushNotificationSentAfterSuccessfulBooking() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
 
         LocalDate start = LocalDate.now(clock).plusDays(2);
         LocalDate end = start.plusDays(1);
@@ -188,7 +188,7 @@ class MealBookingServiceTest {
 
     @Test
     void multipleDatesAreSavedIndividually() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
 
         LocalDate start = LocalDate.now(clock).plusDays(2);
         LocalDate end = start.plusDays(3); // 4 days total
@@ -209,7 +209,7 @@ class MealBookingServiceTest {
     @Test
     void cancelBookingDeletesRecordAndSendsNotification() {
 
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+        User user = new User(1L, "User", "user@test.com", null, null, null, Role.USER, LocalDateTime.now(clock), null);
         LocalDate date = LocalDate.now(clock).plusDays(2);
 
         MealBooking booking = MealBooking.builder()
