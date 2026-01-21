@@ -2,7 +2,12 @@ package org.example.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.example.dto.LocationUpdateRequestDTO;
+import org.example.entity.User;
+import org.example.service.AuthenticatedUserService;
 import org.example.service.UserLocationService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -11,12 +16,15 @@ import org.springframework.web.bind.annotation.*;
 public class LocationController {
 
     private final UserLocationService locationService;
+    private final AuthenticatedUserService authenticatedUserService;
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping("/update")
     public void updateLocation(
             @RequestBody LocationUpdateRequestDTO request,
-            @RequestHeader("X-USER-ID") Long userId
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        locationService.saveLocation(userId, request);
+        User user = authenticatedUserService.loadOrCreateUser(jwt);
+        locationService.saveLocation(user.getId(), request);
     }
 }
