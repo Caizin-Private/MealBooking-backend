@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - release/*
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Read Java version from Gradle
+        id: java_version
+        run: |
+          JAVA_VERSION=$(grep -oP 'JavaLanguageVersion.of\(\K[0-9]+' questevent-backend/build.gradle || true)
+          if [ -z "$JAVA_VERSION" ]; then
+            echo "Java version not found in build.gradle"
+            exit 1
+          fi
+          echo "java=$JAVA_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.java_version.outputs.java }}
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x questevent-backend/gradlew
+
+      - name: Build and test with Gradle
+        working-directory: questevent-backend
+        run: ./gradlew clean build jacocoTestReport
+
+
+
+
