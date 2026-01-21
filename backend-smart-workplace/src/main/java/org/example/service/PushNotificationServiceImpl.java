@@ -58,4 +58,13 @@ public class PushNotificationServiceImpl implements PushNotificationService {
                 "[INACTIVITY NUDGE] User " + userId + " has been inactive"
         );
     }
+
+    public void sendLunchDefaultedNotification(Long userId, LocalDate date) {
+        System.out.println(
+                "[LUNCH DEFAULTED] User " + userId + " defaulted on " + date
+        );
+    }
+
+
+
 }

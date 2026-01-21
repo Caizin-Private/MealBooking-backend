@@ -14,3 +14,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+office:
+  latitude: 18.5204
+  longitude: 73.8567
+  radius-meters: 500
