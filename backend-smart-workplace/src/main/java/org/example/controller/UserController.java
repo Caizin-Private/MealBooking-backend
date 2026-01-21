@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class UserController {
 
     private final UserRepository userRepository;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public User createUser(@RequestBody User user) {
         user.setCreatedAt(LocalDateTime.now());
@@ -22,6 +24,7 @@ public class UserController {
         return userRepository.save(user);
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @GetMapping("/{email}")
     public User getUserByEmail(@PathVariable String email) {
         return userRepository.findByEmail(email)
