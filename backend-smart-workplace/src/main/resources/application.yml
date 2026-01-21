@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/smart_workplace
-    username: sw_user
-    password: sw_pass
+    url: postgresql://postgres:XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf@postgres.railway.internal:5432/railway
+    username: postgres
+    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMuLFf
 
   task:
     scheduling:
