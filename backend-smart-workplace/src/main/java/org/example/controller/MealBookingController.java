@@ -4,11 +4,12 @@ import jakarta.validation.Valid;
 import org.example.dto.MealBookingRequestDTO;
 import org.example.dto.MealCancelRequestDTO;
 import org.example.entity.User;
-import org.example.repository.UserRepository;
+import org.example.service.AuthenticatedUserService;
 import org.example.service.MealBookingService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,23 +17,23 @@ import org.springframework.web.bind.annotation.*;
 public class MealBookingController {
 
     private final MealBookingService mealBookingService;
-    private final UserRepository userRepository;
+    private final AuthenticatedUserService authenticatedUserService;
 
     public MealBookingController(
             MealBookingService mealBookingService,
-            UserRepository userRepository
+            AuthenticatedUserService authenticatedUserService
     ) {
         this.mealBookingService = mealBookingService;
-        this.userRepository = userRepository;
+        this.authenticatedUserService = authenticatedUserService;
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @PostMapping("/book")
     public ResponseEntity<?> bookMeals(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody MealBookingRequestDTO request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = authenticatedUserService.loadOrCreateUser(jwt);
 
         mealBookingService.bookMeals(
                 user,
@@ -45,15 +46,13 @@ public class MealBookingController {
         return ResponseEntity.ok("Meals booked successfully");
     }
 
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     @DeleteMapping("/cancel")
     public ResponseEntity<String> cancelMeal(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody MealCancelRequestDTO request
     ) {
-        User user =
-                userRepository
-                        .findByEmail(userDetails.getUsername())
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = authenticatedUserService.loadOrCreateUser(jwt);
 
         mealBookingService.cancelMeal(user, request.getDate());
 
