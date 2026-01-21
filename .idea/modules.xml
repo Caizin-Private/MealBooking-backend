@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/backend-smart-workplace.iml" filepath="$PROJECT_DIR$/backend-smart-workplace.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/smart-workplace-booking.iml" filepath="$PROJECT_DIR$/.idea/smart-workplace-booking.iml" />
     </modules>
   </component>
