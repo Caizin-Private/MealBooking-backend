@@ -24,7 +24,7 @@ jobs:
       - name: Read Java version from Gradle
         id: java_version
         run: |
-          JAVA_VERSION=$(grep -oP 'JavaLanguageVersion.of\(\K[0-9]+' questevent-backend/build.gradle || true)
+          JAVA_VERSION=$(grep -oP 'JavaLanguageVersion.of\(\K[0-9]+' backend-smart-workplace/build.gradle || true)
           if [ -z "$JAVA_VERSION" ]; then
             echo "Java version not found in build.gradle"
             exit 1
@@ -39,11 +39,11 @@ jobs:
           cache: gradle
 
       - name: Make Gradle wrapper executable
-        run: chmod +x questevent-backend/gradlew
+        run: chmod +x backend-smart-workplace/gradlew
 
       - name: Build and test with Gradle
-        working-directory: questevent-backend
-        run: ./gradlew clean build jacocoTestReport
+        working-directory: backend-smart-workplace
+        run: ./gradlew clean build
 
 
 
