@@ -3,7 +3,6 @@ package org.example.scheduler;
 import org.example.entity.NotificationType;
 import org.example.entity.Role;
 import org.example.entity.User;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
@@ -14,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.*;
 import java.util.List;
@@ -21,8 +21,9 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@SpringBootTest(properties = "spring.task.scheduling.enabled=true")
 @Import(FixedClockConfig.class)
+@ActiveProfiles("test")
 class MealInactivitySchedulerTest {
 
     @MockBean
@@ -30,6 +31,12 @@ class MealInactivitySchedulerTest {
 
     @MockBean
     private MealBookingRepository mealBookingRepository;
+
+    @MockBean
+    private NotificationRepository notificationRepository;
+
+    @MockBean
+    private PushNotificationService pushNotificationService;
 
     @MockBean
     private NotificationService notificationService;

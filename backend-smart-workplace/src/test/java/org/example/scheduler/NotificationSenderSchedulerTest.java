@@ -3,12 +3,14 @@ package org.example.scheduler;
 import org.example.entity.Notification;
 import org.example.entity.NotificationType;
 import org.example.repository.NotificationRepository;
+import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -19,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest(properties = "spring.task.scheduling.enabled=false")
+@SpringBootTest(properties = "spring.task.scheduling.enabled=true")
 @Import(FixedClockConfig.class)
+@ActiveProfiles("test")
 class NotificationSenderSchedulerTest {
 
     @MockBean
@@ -28,6 +31,9 @@ class NotificationSenderSchedulerTest {
 
     @MockBean
     private PushNotificationService pushNotificationService;
+
+    @MockBean
+    private NotificationService notificationService;
 
     @MockBean
     private Clock clock;
