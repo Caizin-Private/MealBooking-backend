@@ -38,4 +38,8 @@ public class MealBooking {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookingStatus status;
+
+    @Column(name = "available_for_lunch", nullable = false)
+    @Builder.Default
+    private Boolean availableForLunch = false;
 }
