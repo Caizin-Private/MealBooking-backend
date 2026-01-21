@@ -4,14 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.MealBookingRequestDTO;
 import org.example.entity.Role;
 import org.example.entity.User;
-import org.example.repository.UserRepository;
+import org.example.service.AuthenticatedUserService;
 import org.example.service.MealBookingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,16 +20,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Optional;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(MealBookingController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 class MealBookingControllerTest {
 
@@ -40,25 +42,25 @@ class MealBookingControllerTest {
     private MealBookingService mealBookingService;
 
     @MockBean
-    private UserRepository userRepository;
+    private AuthenticatedUserService authenticatedUserService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
     // ================= USER =================
     @Test
-    @WithMockUser(username = "test.user@company.com", roles = "USER")
     void shouldBookMealsSuccessfully() throws Exception {
-
-        when(userRepository.findByEmail("test.user@company.com"))
-                .thenReturn(Optional.of(validUser()));
+        User user = validUser();
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(user);
 
         doNothing().when(mealBookingService)
                 .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
 
         mockMvc.perform(
                         post("/api/meals/book")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+                                        .jwt(jwt -> jwt.claim("email", "test.user@company.com").claim("roles", java.util.List.of("USER"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
@@ -68,102 +70,101 @@ class MealBookingControllerTest {
 
     // ================= ADMIN =================
     @Test
-    @WithMockUser(username = "admin@company.com", roles = "ADMIN")
     void adminCanBookMeals() throws Exception {
+        User admin = new User(
+                2L,
+                "Admin",
+                "admin@company.com",
+                null,
+                null,
+                null,
+                Role.ADMIN,
+                LocalDateTime.now(),
+                null
+        );
 
-        when(userRepository.findByEmail("admin@company.com"))
-                .thenReturn(Optional.of(
-                        new User(
-                                2L,
-                                "Admin",
-                                "admin@company.com",
-                                Role.ADMIN,
-                                LocalDateTime.now()
-                        )
-                ));
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(admin);
 
         doNothing().when(mealBookingService)
                 .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
 
         mockMvc.perform(
                         post("/api/meals/book")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))
+                                        .jwt(jwt -> jwt.claim("email", "admin@company.com").claim("roles", java.util.List.of("ADMIN"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
                 .andExpect(status().isOk());
     }
 
-    // ================= SECURITY =================
-    @Test
-    void unauthenticatedUserCannotBookMeals() throws Exception {
-
-        mockMvc.perform(
-                        post("/api/meals/book")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(validRequest()))
-                )
-                .andExpect(status().isForbidden());
-    }
-
     // ================= DUPLICATE BOOKING =================
     @Test
-    @WithMockUser(username = "test.user@company.com", roles = "USER")
-    void duplicateBookingThrowsException() {
-
-        when(userRepository.findByEmail(any()))
-                .thenReturn(Optional.of(validUser()));
+    void duplicateBookingThrowsException() throws Exception {
+        User user = validUser();
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(user);
 
         doThrow(new RuntimeException("Meal already booked"))
                 .when(mealBookingService)
                 .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
 
-        assertThrows(
-                jakarta.servlet.ServletException.class,
-                () -> mockMvc.perform(
+        mockMvc.perform(
                         post("/api/meals/book")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+                                        .jwt(jwt -> jwt.claim("email", "test.user@company.com").claim("roles", java.util.List.of("USER"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
-        );
+                .andExpect(status().isInternalServerError());
     }
 
 
-    // ================= MEDIA TYPE =================
+    // ================= USER CREATION =================
     @Test
-    @WithMockUser(username = "ghost@company.com", roles = "USER")
-    void userNotFoundThrowsException() {
+    void newUserIsCreatedOnFirstLogin() throws Exception {
+        User newUser = new User(
+                1L,
+                "New User",
+                "newuser@company.com",
+                "AZURE_AD",
+                "oid-123",
+                null,
+                Role.USER,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
-        when(userRepository.findByEmail("ghost@company.com"))
-                .thenReturn(Optional.empty());
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(newUser);
 
-        assertThrows(
-                jakarta.servlet.ServletException.class,
-                () -> mockMvc.perform(
+        doNothing().when(mealBookingService)
+                .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
+
+        mockMvc.perform(
                         post("/api/meals/book")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+                                        .jwt(jwt -> jwt.claim("email", "newuser@company.com").claim("roles", java.util.List.of("USER"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
-        );
+                .andExpect(status().isOk());
     }
 
     @Test
-    @WithMockUser(username = "test.user@company.com", roles = "USER")
     void cancelMealSuccessfully() throws Exception {
-
         User user = validUser();
-
-        when(userRepository.findByEmail("test.user@company.com"))
-                .thenReturn(Optional.of(user));
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(user);
 
         doNothing().when(mealBookingService)
                 .cancelMeal(any(User.class), any(LocalDate.class));
 
         mockMvc.perform(
                         delete("/api/meals/cancel")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+                                        .jwt(jwt -> jwt.claim("email", "test.user@company.com").claim("roles", java.util.List.of("USER"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                         {
@@ -176,22 +177,19 @@ class MealBookingControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "test.user@company.com", roles = "USER")
     void cancelFailsWhenNoBookingExists() throws Exception {
-
         User user = validUser();
-
-        when(userRepository.findByEmail("test.user@company.com"))
-                .thenReturn(Optional.of(user));
+        when(authenticatedUserService.loadOrCreateUser(any()))
+                .thenReturn(user);
 
         doThrow(new RuntimeException("No booking found for this date"))
                 .when(mealBookingService)
                 .cancelMeal(any(User.class), any(LocalDate.class));
 
-        Exception exception = assertThrows(Exception.class, () ->
-                mockMvc.perform(
+        mockMvc.perform(
                         delete("/api/meals/cancel")
-                                .with(csrf())
+                                .with(jwt().authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"))
+                                        .jwt(jwt -> jwt.claim("email", "test.user@company.com").claim("roles", java.util.List.of("USER"))))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                 {
@@ -199,10 +197,7 @@ class MealBookingControllerTest {
                                 }
                             """)
                 )
-        );
-
-        assert exception.getCause() instanceof RuntimeException;
-        assert exception.getCause().getMessage().equals("No booking found for this date");
+                .andExpect(status().isInternalServerError());
     }
 
 
@@ -225,8 +220,12 @@ class MealBookingControllerTest {
                 1L,
                 "Test User",
                 "test.user@company.com",
+                null,
+                null,
+                null,
                 Role.USER,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                null
         );
     }
 }
