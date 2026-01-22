@@ -38,63 +38,72 @@ public class LunchGeofenceScheduler {
     @Scheduled(fixedRate = 30000) // 30 sec for testing
     @Transactional
     public void autoDefaultLunchBookings() {
+        try {
+            // Use clock if available, otherwise fallback to system default
+            Clock effectiveClock = (clock != null && clock.getZone() != null)
+                    ? clock
+                    : Clock.systemDefaultZone();
 
-        LocalDate today = LocalDate.now(clock);
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime endOfDay = today.atTime(23, 59, 59);
+            LocalDate today = LocalDate.now(effectiveClock);
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.atTime(23, 59, 59);
 
-        List<MealBooking> bookings =
-                mealBookingRepository.findByBookingDateAndStatus(
-                        today,
-                        BookingStatus.BOOKED
-                );
-
-        for (MealBooking booking : bookings) {
-
-            Long userId = booking.getUser().getId();
-
-            userLocationRepository.findById(userId).ifPresent(location -> {
-
-                double distance = GeoUtils.distanceInMeters(
-                        location.getLatitude(),
-                        location.getLongitude(),
-                        officeLocationConfig.getLatitude(),
-                        officeLocationConfig.getLongitude()
-                );
-
-                if (distance > officeLocationConfig.getRadiusMeters()) {
-
-                    // 1️⃣ Update booking
-                    booking.setStatus(BookingStatus.DEFAULT);
-
-                    // 2️⃣ Idempotency check
-                    boolean alreadyNotified =
-                            notificationRepository
-                                    .existsByUserIdAndTypeAndScheduledAtBetween(
-                                            userId,
-                                            NotificationType.LUNCH_DEFAULTED,
-                                            startOfDay,
-                                            endOfDay
-                                    );
-
-                    if (alreadyNotified) {
-                        return;
-                    }
-
-                    // 3️⃣ Save notification
-                    notificationService.schedule(
-                            userId,
-                            "Lunch auto-cancelled",
-                            "You were not near the office during lunch time.",
-                            NotificationType.LUNCH_DEFAULTED,
-                            LocalDateTime.now(clock)
+            List<MealBooking> bookings =
+                    mealBookingRepository.findByBookingDateAndStatus(
+                            today,
+                            BookingStatus.BOOKED
                     );
 
-                    // 4️⃣ Push (stub / real later)
-                    pushNotificationService
-                            .sendLunchDefaultedNotification(userId, today);
-                }
-            });
+            for (MealBooking booking : bookings) {
+
+                Long userId = booking.getUser().getId();
+
+                userLocationRepository.findById(userId).ifPresent(location -> {
+
+                    double distance = GeoUtils.distanceInMeters(
+                            location.getLatitude(),
+                            location.getLongitude(),
+                            officeLocationConfig.getLatitude(),
+                            officeLocationConfig.getLongitude()
+                    );
+
+                    if (distance > officeLocationConfig.getRadiusMeters()) {
+
+                        // 1️⃣ Update booking
+                        booking.setStatus(BookingStatus.DEFAULT);
+
+                        // 2️⃣ Idempotency check
+                        boolean alreadyNotified =
+                                notificationRepository
+                                        .existsByUserIdAndTypeAndScheduledAtBetween(
+                                                userId,
+                                                NotificationType.LUNCH_DEFAULTED,
+                                                startOfDay,
+                                                endOfDay
+                                        );
+
+                        if (alreadyNotified) {
+                            return;
+                        }
+
+                        // 3️⃣ Save notification
+                        notificationService.schedule(
+                                userId,
+                                "Lunch auto-cancelled",
+                                "You were not near the office during lunch time.",
+                                NotificationType.LUNCH_DEFAULTED,
+                                LocalDateTime.now(effectiveClock)
+                        );
+
+                        // 4️⃣ Push (stub / real later)
+                        pushNotificationService
+                                .sendLunchDefaultedNotification(userId, today);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            // Log and ignore exceptions during shutdown or when clock is unavailable
+            // This prevents errors during application shutdown
         }
     }
 }

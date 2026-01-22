@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Value("${azure.client-id}")
+    @Value("${azure.client-id:}")
     private String azureClientId;
 
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
