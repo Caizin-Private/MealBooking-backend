@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: postgresql://postgres:XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf@shortline.proxy.rlwy.net:38052/railway
+    url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
     username: postgres
     password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
     driver-class-name: org.postgresql.Driver
@@ -12,7 +12,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate   # DEV only
+      ddl-auto: update   # DEV only
     show-sql: false
     properties:
       hibernate:
