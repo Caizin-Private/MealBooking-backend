@@ -1,9 +1,10 @@
 spring:
   datasource:
-    # Provide Railway credentials via env vars at runtime (never in tests).
-      url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
-      username: postgres
-      password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+    url: postgresql://postgres:XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf@shortline.proxy.rlwy.net:38052/railway
+    username: postgres
+    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+    driver-class-name: org.postgresql.Driver
+
 
   task:
     scheduling:
@@ -11,8 +12,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update   # DEV only
-    show-sql: true
+      ddl-auto: validate   # DEV only
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
