@@ -41,10 +41,12 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x backend-smart-workplace/gradlew
 
-      - name: Build and test with Gradle
+      - name: Build, test and verify coverage
         working-directory: backend-smart-workplace
-        run: ./gradlew clean build
+        run: ./gradlew clean check
 
-
-
-
+      - name: Upload JaCoCo HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend-smart-workplace/build/reports/jacoco/test/html
