@@ -1,5 +1,6 @@
 package org.example.scheduler;
 
+import org.example.config.TestSecurityConfig;
 import org.example.entity.CutoffConfig;
 import org.example.entity.NotificationType;
 import org.example.entity.Role;
@@ -26,7 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = "spring.task.scheduling.enabled=true")
-@Import(FixedClockConfig.class)   // fixed time: 2026-01-18T18:00Z
+@Import({FixedClockConfig.class , TestSecurityConfig.class})   // fixed time: 2026-01-18T18:00Z
 @ActiveProfiles("test")
 class MealReminderSchedulerTest {
 
