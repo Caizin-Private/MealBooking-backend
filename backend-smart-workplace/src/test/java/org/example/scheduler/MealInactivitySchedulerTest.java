@@ -41,9 +41,6 @@ class MealInactivitySchedulerTest {
     @MockBean
     private NotificationService notificationService;
 
-    @MockBean
-    private Clock clock;
-
     @Autowired
     private MealInactivityScheduler inactivityScheduler;
 
@@ -55,9 +52,6 @@ class MealInactivitySchedulerTest {
         Instant now = LocalDateTime.of(2026, 1, 18, 10, 0)
                 .atZone(ZONE)
                 .toInstant();
-
-        when(clock.instant()).thenReturn(now);
-        when(clock.getZone()).thenReturn(ZONE);
 
         User user = new User(
                 1L,
@@ -136,9 +130,6 @@ class MealInactivitySchedulerTest {
         Instant now = LocalDateTime.of(2026, 1, 18, 10, 0)
                 .atZone(ZONE)
                 .toInstant();
-
-        when(clock.instant()).thenReturn(now);
-        when(clock.getZone()).thenReturn(ZONE);
     }
 
     private User user(Role role) {
