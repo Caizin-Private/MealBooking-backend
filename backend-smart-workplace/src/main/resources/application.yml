@@ -20,7 +20,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://login.microsoftonline.com/${azure.tenant-id}/v2.0
+          issuer-uri: https://login.microsoftonline.com/f54f468f-415b-4a86-a7cf-c9495812c590/v2.0
 
 office:
   latitude: 18.5204

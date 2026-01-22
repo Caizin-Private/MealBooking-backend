@@ -1,9 +1,8 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:smart_workplace_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/smart_workplace}
+    username: ${SPRING_DATASOURCE_USERNAME:sw_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:sw_pass}
 
   task:
     scheduling:
@@ -11,13 +10,23 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    show-sql: false
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
-        format_sql: false
+        format_sql: true
+        default_schema: public
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/f54f468f-415b-4a86-a7cf-c9495812c590/v2.0
 
 office:
   latitude: 18.5204
   longitude: 73.8567
   radius-meters: 500
+
+azure:
+  tenant-id: f54f468f-415b-4a86-a7cf-c9495812c590
+  client-id: 12b1e09e-023f-430b-bf15-13d1223afb90
