@@ -1,21 +1,102 @@
+##spring:
+##  datasource:
+##    url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
+##    username: postgres
+##    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+##    driver-class-name: org.postgresql.Driver
+##
+##
+##  task:
+##    scheduling:
+##      enabled: true
+##
+##  jpa:
+##    hibernate:
+##      ddl-auto: update   # DEV only
+##    show-sql: false
+##    properties:
+##      hibernate:
+##        format_sql: true
+##        default_schema: public
+##
+##office:
+##  latitude: 18.5204
+##  longitude: 73.8567
+##  radius-meters: 500
+#
+#
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
+#    username: postgres
+#    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+#    driver-class-name: org.postgresql.Driver
+#
+#  task:
+#    scheduling:
+#      enabled: true
+#
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    show-sql: false
+#    properties:
+#      hibernate:
+#        dialect: org.hibernate.dialect.PostgreSQLDialect   # 🔴 ADD THIS
+#        format_sql: true
+#        default_schema: public
+#
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          issuer-uri: https://sts.windows.net/f7b92ef4-239a-49ad-aff6-679ec33dea08/
+#
+#office:
+#  latitude: 18.5204
+#  longitude: 73.8567
+#  radius-meters: 500
+#
+#
+#azure:
+#  tenant-id: f54f468f-415b-4a86-a7cf-c9495812c590
+#  client-id: 12b1e09e-023f-430b-bf15-13d1223afb90
+#
+#
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health
+#  endpoint:
+#    health:
+#      show-details: always
+
+
+#azure:
+#  tenant-id: f54f468f-415b-4a86-a7cf-c9495812c590
+#  client-id: 12b1e09e-023f-430b-bf15-13d1223afb90
+
+
+
 spring:
   datasource:
-    url: jdbc:postgresql://postgres.railway.internal:5432/railway
+    url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
     username: postgres
     password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
     driver-class-name: org.postgresql.Driver
 
-
   task:
     scheduling:
-      enabled: false
+      enabled: true
 
   jpa:
     hibernate:
-      ddl-auto: update   # DEV only
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect   # 🔴 ADD THIS
         format_sql: true
         default_schema: public
 
