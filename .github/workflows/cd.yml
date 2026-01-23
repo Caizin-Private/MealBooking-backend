@@ -1,31 +1,27 @@
 name: Beanstalk CD Deploy
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types:
-      - completed
+  push:
+    branches:
+      - 'release/*'
+  workflow_dispatch:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   EB_APPLICATION_NAME: ${{ secrets.EB_APPLICATION_NAME }}
   EB_ENVIRONMENT_NAME: ${{ secrets.EB_ENVIRONMENT_NAME }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_DISTRIBUTION: 'corretto'
 
 jobs:
   deploy:
-    # ✅ Only run if CI was successful AND branch is main or release/**
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      (github.event.workflow_run.head_branch == 'main' ||
-       startsWith(github.event.workflow_run.head_branch, 'release/'))
-
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
+
 
       - name: Read Java version from Gradle
         id: java_version
@@ -36,6 +32,7 @@ jobs:
           fi
           echo "java=$JAVA_VERSION" >> $GITHUB_OUTPUT
 
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -43,28 +40,32 @@ jobs:
           java-version: ${{ steps.java_version.outputs.java }}
           cache: gradle
 
-      - name: Build with Gradle (skip tests)
+
+      - name: Build with Gradle
         working-directory: questevent-backend
         run: |
           chmod +x gradlew
           ./gradlew clean build -x test
 
+
       - name: Get timestamp and SHA
         id: vars
         run: |
           echo "timestamp=$(date +'%Y%m%d_%H%M%S')" >> $GITHUB_OUTPUT
-          echo "sha=$(echo ${{ github.event.workflow_run.head_sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
 
       - name: Create deployment package
         run: |
           mkdir -p deploy
           find questevent-backend/build/libs/ -name "*.jar" ! -name "*-plain.jar" -exec cp {} deploy/application.jar \;
-
+          
           cat > deploy/Procfile << 'EOF'
           web: java -jar application.jar
           EOF
-
+          
           cd deploy && zip -r ../deploy-package.zip .
+
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -73,26 +74,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload to S3 and Deploy to Elastic Beanstalk
+
+      - name: Upload to S3 and Deploy
         run: |
           S3_BUCKET="elasticbeanstalk-${{ env.AWS_REGION }}-${{ env.AWS_ACCOUNT_ID }}"
           S3_KEY="app-${{ steps.vars.outputs.timestamp }}.zip"
           VERSION_LABEL="v-${{ steps.vars.outputs.timestamp }}-${{ steps.vars.outputs.sha }}"
-
+          
           aws s3 cp deploy-package.zip s3://${S3_BUCKET}/${S3_KEY}
-
+          
           aws elasticbeanstalk create-application-version \
             --application-name ${{ env.EB_APPLICATION_NAME }} \
             --version-label "${VERSION_LABEL}" \
             --source-bundle S3Bucket="${S3_BUCKET}",S3Key="${S3_KEY}"
-
+          
           aws elasticbeanstalk update-environment \
             --application-name ${{ env.EB_APPLICATION_NAME }} \
             --environment-name ${{ env.EB_ENVIRONMENT_NAME }} \
             --version-label "${VERSION_LABEL}"
 
+
       - name: Final Summary
-        run: |
-          echo "✅ Deployment successful!" >> $GITHUB_STEP_SUMMARY
-          echo "Environment: ${{ env.EB_ENVIRONMENT_NAME }}" >> $GITHUB_STEP_SUMMARY
-          echo "Java Version: ${{ steps.java_version.outputs.java }}" >> $GITHUB_STEP_SUMMARY
+        run: echo " Deployment to ${{ env.EB_ENVIRONMENT_NAME }} completed using Java ${{ steps.java_version.outputs.java }}!" >> $GITHUB_STEP_SUMMARY
