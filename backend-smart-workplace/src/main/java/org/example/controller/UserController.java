@@ -67,12 +67,14 @@ public class UserController {
         return userRepository.save(user);
     }
 
-    @GetMapping("/{email}")
+
+
+    @GetMapping("/by-email")
     @Operation(
             summary = "Get user by email",
-            description = "Retrieve user details using their email address. Returns complete user profile information."
+            description = "Retrieve user details using their email address"
     )
-    @ApiResponses(value = {
+    @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "User found successfully",
@@ -88,19 +90,15 @@ public class UserController {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(value = "User not found")
                     )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - Invalid credentials"
             )
     })
     public User getUserByEmail(
             @Parameter(
-                    description = "Email address of the user to retrieve",
+                    description = "Email address of the user",
                     required = true,
                     example = "user@company.com"
             )
-            @PathVariable String email
+            @RequestParam String email
     ) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
