@@ -29,9 +29,6 @@ public class User {
     @Schema(description = "Email address of the user (unique)", example = "john.doe@company.com")
     private String email;
 
-//    @Column(nullable = false)
-//    private String password;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Schema(description = "Role of the user in the system", allowableValues = {"USER", "ADMIN"})
@@ -40,4 +37,12 @@ public class User {
     @Column(nullable = false)
     @Schema(description = "Timestamp when the user account was created", example = "2026-01-22T10:30:00")
     private LocalDateTime createdAt;
+
+    @Column(name = "external_id", unique = true)
+    @Schema(description = "External ID from Azure OAuth (oid or sub claim)", example = "12345678-1234-1234-1234-123456789012")
+    private String externalId;
+
+    @Column(name = "last_login_at")
+    @Schema(description = "Timestamp of the last login", example = "2026-01-23T15:30:00")
+    private LocalDateTime lastLoginAt;//to keep track of user last login
 }
