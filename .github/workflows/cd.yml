@@ -26,7 +26,7 @@ jobs:
       - name: Read Java version from Gradle
         id: java_version
         run: |
-          JAVA_VERSION=$(grep -oP 'JavaLanguageVersion.of\(\K[0-9]+' questevent-backend/build.gradle || true)
+          JAVA_VERSION=$(grep -oP 'JavaLanguageVersion.of\(\K[0-9]+' backend-smart-workplace/build.gradle || true)
           if [ -z "$JAVA_VERSION" ]; then
             JAVA_VERSION="17"
           fi
@@ -42,7 +42,7 @@ jobs:
 
 
       - name: Build with Gradle
-        working-directory: questevent-backend
+        working-directory: backend-smart-workplace
         run: |
           chmod +x gradlew
           ./gradlew clean build -x test
@@ -58,7 +58,7 @@ jobs:
       - name: Create deployment package
         run: |
           mkdir -p deploy
-          find questevent-backend/build/libs/ -name "*.jar" ! -name "*-plain.jar" -exec cp {} deploy/application.jar \;
+          find backend-smart-workplace/build/libs/ -name "*.jar" ! -name "*-plain.jar" -exec cp {} deploy/application.jar \;
           
           cat > deploy/Procfile << 'EOF'
           web: java -jar application.jar
