@@ -1,16 +1,23 @@
+# Maven
+target/
+
+# Compiled classes
+*.class
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
 # IntelliJ
 .idea/
 *.iml
 
-# Maven
-target/
-
-# Gradle
-build/
-.gradle/
 
 
-*.log
+# Ignore Gradle project-specific cache directory
+.gradle
 
-
-.DS_Store
+# Ignore Gradle build output directory
+build
