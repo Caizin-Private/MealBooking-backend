@@ -14,18 +14,15 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-
-
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -46,6 +43,7 @@ class MealBookingControllerTest {
     private ObjectMapper objectMapper;
 
     // ================= USER =================
+
     @Test
     @WithMockUser(username = "test.user@company.com", roles = "USER")
     void shouldBookMealsSuccessfully() throws Exception {
@@ -64,9 +62,13 @@ class MealBookingControllerTest {
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().string("Meals booked successfully"));
+
+        verify(mealBookingService, times(1))
+                .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
     }
 
     // ================= ADMIN =================
+
     @Test
     @WithMockUser(username = "admin@company.com", roles = "ADMIN")
     void adminCanBookMeals() throws Exception {
@@ -95,8 +97,21 @@ class MealBookingControllerTest {
     }
 
     // ================= SECURITY =================
+
     @Test
     void unauthenticatedUserCannotBookMeals() throws Exception {
+
+        mockMvc.perform(
+                        post("/api/meals/book")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(validRequest()))
+                )
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @WithMockUser(username = "test.user@company.com", roles = "USER")
+    void csrfMissingReturns403() throws Exception {
 
         mockMvc.perform(
                         post("/api/meals/book")
@@ -106,10 +121,26 @@ class MealBookingControllerTest {
                 .andExpect(status().isForbidden());
     }
 
-    // ================= DUPLICATE BOOKING =================
+    // ================= VALIDATION =================
+
     @Test
     @WithMockUser(username = "test.user@company.com", roles = "USER")
-    void duplicateBookingThrowsException() {
+    void invalidRequestReturns400() throws Exception {
+
+        mockMvc.perform(
+                        post("/api/meals/book")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}")
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    // ================= EXCEPTION CASES =================
+
+    @Test
+    @WithMockUser(username = "test.user@company.com", roles = "USER")
+    void duplicateBookingReturns400() throws Exception {
 
         when(userRepository.findByEmail(any()))
                 .thenReturn(Optional.of(validUser()));
@@ -118,45 +149,41 @@ class MealBookingControllerTest {
                 .when(mealBookingService)
                 .bookMeals(any(), any(), any(), anyDouble(), anyDouble());
 
-        assertThrows(
-                jakarta.servlet.ServletException.class,
-                () -> mockMvc.perform(
+        mockMvc.perform(
                         post("/api/meals/book")
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
-        );
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Meal already booked"));
     }
 
-
-    // ================= MEDIA TYPE =================
     @Test
     @WithMockUser(username = "ghost@company.com", roles = "USER")
-    void userNotFoundThrowsException() {
+    void userNotFoundReturns400() throws Exception {
 
         when(userRepository.findByEmail("ghost@company.com"))
                 .thenReturn(Optional.empty());
 
-        assertThrows(
-                jakarta.servlet.ServletException.class,
-                () -> mockMvc.perform(
+        mockMvc.perform(
                         post("/api/meals/book")
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(validRequest()))
                 )
-        );
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("User not found"));
     }
+
+    // ================= CANCEL MEAL =================
 
     @Test
     @WithMockUser(username = "test.user@company.com", roles = "USER")
     void cancelMealSuccessfully() throws Exception {
 
-        User user = validUser();
-
         when(userRepository.findByEmail("test.user@company.com"))
-                .thenReturn(Optional.of(user));
+                .thenReturn(Optional.of(validUser()));
 
         doNothing().when(mealBookingService)
                 .cancelMeal(any(User.class), any(LocalDate.class));
@@ -166,10 +193,10 @@ class MealBookingControllerTest {
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
-                        {
-                          "date": "2026-01-22"
-                        }
-                    """)
+                                {
+                                  "date": "2026-01-22"
+                                }
+                                """)
                 )
                 .andExpect(status().isOk())
                 .andExpect(content().string("Meal booking cancelled successfully"));
@@ -179,17 +206,14 @@ class MealBookingControllerTest {
     @WithMockUser(username = "test.user@company.com", roles = "USER")
     void cancelFailsWhenNoBookingExists() throws Exception {
 
-        User user = validUser();
-
         when(userRepository.findByEmail("test.user@company.com"))
-                .thenReturn(Optional.of(user));
+                .thenReturn(Optional.of(validUser()));
 
         doThrow(new RuntimeException("No booking found for this date"))
                 .when(mealBookingService)
                 .cancelMeal(any(User.class), any(LocalDate.class));
 
-        Exception exception = assertThrows(Exception.class, () ->
-                mockMvc.perform(
+        mockMvc.perform(
                         delete("/api/meals/cancel")
                                 .with(csrf())
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -197,20 +221,14 @@ class MealBookingControllerTest {
                                 {
                                   "date": "2026-01-22"
                                 }
-                            """)
+                                """)
                 )
-        );
-
-        assert exception.getCause() instanceof RuntimeException;
-        assert exception.getCause().getMessage().equals("No booking found for this date");
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("No booking found for this date"));
     }
 
-
-
-
-
-
     // ================= HELPERS =================
+
     private MealBookingRequestDTO validRequest() {
         MealBookingRequestDTO request = new MealBookingRequestDTO();
         request.setStartDate(LocalDate.now().plusDays(2));
