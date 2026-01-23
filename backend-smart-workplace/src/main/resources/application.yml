@@ -96,9 +96,14 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect   # 🔴 ADD THIS
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_schema: public
+
+logging:
+  level:
+    org.example: INFO
+    root: INFO
 
 office:
   latitude: 18.5204
