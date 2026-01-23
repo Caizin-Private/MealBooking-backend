@@ -100,6 +100,12 @@ spring:
         format_sql: true
         default_schema: public
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://sts.windows.net/f7b92ef4-239a-49ad-aff6-679ec33dea08/
+
 logging:
   level:
     org.example: INFO
@@ -109,3 +115,7 @@ office:
   latitude: 18.5204
   longitude: 73.8567
   radius-meters: 500
+
+azure:
+  tenant-id: f54f468f-415b-4a86-a7cf-c9495812c590
+  client-id: 12b1e09e-023f-430b-bf15-13d1223afb90
