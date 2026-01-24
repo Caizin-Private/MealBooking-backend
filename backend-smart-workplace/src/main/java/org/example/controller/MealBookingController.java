@@ -10,8 +10,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.example.dto.*;
-import org.example.entity.Role;
+import lombok.RequiredArgsConstructor;
+import org.example.dto.SingleMealBookingRequestDTO;
+import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.RangeMealBookingRequestDTO;
+import org.example.dto.RangeMealBookingResponseDTO;
+import org.example.dto.UpcomingMealsResponseDTO;
+import org.example.dto.UserIdRequestDTO;
+import org.example.dto.CancelMealRequestDTO;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
@@ -23,75 +29,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/meals")
-@Tag(name = "Meal Booking", description = "APIs for managing meal bookings including booking and cancellation")
+@Tag(name = "Meal Booking", description = "APIs for managing meal bookings")
 @SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class MealBookingController {
 
     private final MealBookingService mealBookingService;
     private final UserRepository userRepository;
-
-    public MealBookingController(
-            MealBookingService mealBookingService,
-            UserRepository userRepository
-    ) {
-        this.mealBookingService = mealBookingService;
-        this.userRepository = userRepository;
-    }
-
-    @DeleteMapping("/cancel")
-    @Operation(
-            summary = "Cancel meal booking",
-            description = "Cancel an existing meal booking for a specific date. The user can only cancel their own bookings."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Meal booking cancelled successfully",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = String.class),
-                            examples = @ExampleObject(value = "Meal booking cancelled successfully")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Bad request - Invalid date or no booking found",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(value = "No booking found for this date")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - Invalid credentials"
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Internal server error"
-            )
-    })
-    public ResponseEntity<String> cancelMeal(
-            @Parameter(
-                    description = "Meal cancellation request",
-                    required = true,
-                    schema = @Schema(implementation = MealCancelRequestDTO.class)
-            )
-            @Valid @RequestBody MealCancelRequestDTO request
-    ) {
-        // For testing without authentication, use the same test user
-        String testEmail = "test@example.com";
-        User user =
-                userRepository
-                        .findByEmail(testEmail)
-                        .orElseThrow(() -> new RuntimeException("Test user not found"));
-
-        mealBookingService.cancelMeal(user, request.getDate());
-
-        return ResponseEntity.ok("Meal booking cancelled successfully");
-    }
-
-
-
 
     @PostMapping("/book-single")
     @Operation(
@@ -143,7 +87,6 @@ public class MealBookingController {
                 ? ResponseEntity.ok(response)
                 : ResponseEntity.badRequest().body(response);
     }
-
 
     @PostMapping("/book-range")
     @Operation(
@@ -244,6 +187,61 @@ public class MealBookingController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
+
+        return response.isSuccess()
+                ? ResponseEntity.ok(response)
+                : ResponseEntity.badRequest().body(response);
+    }
+
+    @PostMapping("/cancel")
+    @Operation(
+            summary = "Cancel meal booking by user ID and date",
+            description = "Cancel a specific meal booking for a user on a given date. Validates date and booking existence."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Meal cancelled successfully",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = MealBookingResponseDTO.class),
+                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Meal cancelled successfully for 2026-01-25\", \"bookingId\": 123, \"bookingDate\": \"2026-01-25\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request - Invalid input or validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"Cannot cancel meals for past dates\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Not found - User or booking not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"No booking found for user 123 on 2026-01-25\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid credentials"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error"
+            )
+    })
+    public ResponseEntity<MealBookingResponseDTO> cancelMeal(
+            @Parameter(
+                    description = "Cancel meal request",
+                    required = true,
+                    schema = @Schema(implementation = CancelMealRequestDTO.class)
+            )
+            @Valid @RequestBody CancelMealRequestDTO request
+    ) {
+        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)

@@ -4,12 +4,11 @@ import lombok.RequiredArgsConstructor;
 import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
-import org.example.entity.BookingStatus;
-import org.example.entity.CutoffConfig;
-import org.example.entity.MealBooking;
-import org.example.entity.User;
-import org.example.repository.CutoffConfigRepository;
+import org.example.dto.CancelMealRequestDTO;
+import org.example.entity.*;
 import org.example.repository.MealBookingRepository;
+import org.example.repository.NotificationRepository;
+import org.example.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,62 +26,20 @@ import java.util.stream.Collectors;
 public class MealBookingServiceImpl implements MealBookingService {
 
     private final MealBookingRepository mealBookingRepository;
-    private final GeoFenceService geoFenceService;
+    private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
-    private final CutoffConfigRepository cutoffConfigRepository;
+    private final NotificationRepository notificationRepository;
     private final Clock clock;
-
-
-    /* 🔒 Internal per-date business rules */
-    private void validateBookingDate(
-            LocalDate date,
-            LocalDate today,
-            LocalTime now,
-            CutoffConfig cutoffConfig,
-            User user
-    ) {
-
-        /* Cutoff applies only for tomorrow */
-        if (date.equals(today.plusDays(1))
-                && now.isAfter(cutoffConfig.getCutoffTime())) {
-            throw new RuntimeException("Booking closed for " + date);
-        }
-
-        /* Duplicate booking check */
-        if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-            throw new RuntimeException("Meal already booked for " + date);
-        }
-    }
-
-    public void cancelMeal(User user, LocalDate date) {
-
-        LocalDate today = LocalDate.now(clock);
-
-        if (date.isBefore(today)) {
-            throw new RuntimeException("Past bookings cannot be cancelled");
-        }
-
-        MealBooking booking =
-                mealBookingRepository
-                        .findByUserAndBookingDate(user, date)
-                        .orElseThrow(() -> new RuntimeException("No booking found for this date"));
-
-        mealBookingRepository.delete(booking);
-
-        pushNotificationService.sendCancellationConfirmation(
-                user.getId(),
-                date
-        );
-    }
-
 
     @Override
     public MealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
         try {
+
             LocalDate today = LocalDate.now(clock);
             if (date.isBefore(today)) {
                 return MealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
+
 
             if (date.getDayOfWeek().getValue() >= 6) {
                 return MealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
@@ -107,6 +64,7 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
 
+            // 6️⃣ Send notification
             pushNotificationService.sendSingleMealBookingConfirmation(user.getId(), date);
 
             return MealBookingResponseDTO.success(
@@ -120,13 +78,13 @@ public class MealBookingServiceImpl implements MealBookingService {
         }
     }
 
-
     @Override
     public RangeMealBookingResponseDTO bookRangeMeals(User user, LocalDate startDate, LocalDate endDate) {
         List<String> bookedDates = new ArrayList<>();
         List<String> failedBookings = new ArrayList<>();
 
         try {
+            // 1️⃣ Date range validation
             LocalDate today = LocalDate.now(clock);
             LocalTime now = LocalTime.now(clock);
 
@@ -140,7 +98,6 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 try {
-
                     if (date.getDayOfWeek().getValue() >= 6) {
                         failedBookings.add(date + " - Cannot book on weekends (Saturday and Sunday)");
                         continue;
@@ -213,6 +170,50 @@ public class MealBookingServiceImpl implements MealBookingService {
 
         } catch (Exception e) {
             return UpcomingMealsResponseDTO.failure("Failed to retrieve upcoming meals: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public MealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request) {
+        try {
+            User user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
+
+            LocalDate today = LocalDate.now(clock);
+            LocalDate bookingDate = request.getBookingDate();
+
+            if (bookingDate.isBefore(today)) {
+                return MealBookingResponseDTO.failure("Cannot cancel meals for past dates");
+            }
+
+            MealBooking booking = mealBookingRepository.findByUserAndBookingDate(user, bookingDate)
+                    .orElseThrow(() -> new RuntimeException("No booking found for user " + request.getUserId() + " on " + bookingDate));
+
+            mealBookingRepository.delete(booking);
+
+            Notification notification = Notification.builder()
+                    .userId(user.getId())
+                    .title("Meal Cancelled")
+                    .message("Your meal booking for " + bookingDate + " has been cancelled successfully")
+                    .type(NotificationType.CANCELLATION_CONFIRMATION)
+                    .sent(false)
+                    .scheduledAt(LocalDateTime.now(clock))
+                    .sentAt(null)
+                    .build();
+
+            notificationRepository.save(notification);
+
+            pushNotificationService.sendCancellationConfirmation(user.getId(), bookingDate);
+
+            return MealBookingResponseDTO.success(
+                    "Meal cancelled successfully for " + bookingDate,
+                    booking.getId(),
+                    bookingDate.toString()
+            );
+
+
+        } catch (Exception e) {
+            return MealBookingResponseDTO.failure("Cancellation failed: " + e.getMessage());
         }
     }
 

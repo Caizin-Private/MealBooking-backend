@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.dto.CancelMealRequestDTO;
 import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
@@ -14,5 +15,8 @@ public interface MealBookingService {
 
     UpcomingMealsResponseDTO getUpcomingMeals(User user);
 
-    void cancelMeal(User user, LocalDate date);
+    MealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request);
 }
+
+
+
