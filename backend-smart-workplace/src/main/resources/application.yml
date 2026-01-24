@@ -83,7 +83,10 @@ spring:
   datasource:
     url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
     username: postgres
-    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf                     # 👈 leave empty if no password
+    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+#    url: jdbc:postgresql://localhost:5432/smart_workplace
+#    username: admin
+#    password: admin
     driver-class-name: org.postgresql.Driver
   task:
     scheduling:
@@ -104,6 +107,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: https://sts.windows.net/f54f468f-415b-4a86-a7cf-c9495812c590/
+
 
 logging:
   level:
