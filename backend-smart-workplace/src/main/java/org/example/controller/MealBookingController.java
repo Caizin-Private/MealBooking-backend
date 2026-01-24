@@ -39,6 +39,34 @@ public class MealBookingController {
         this.userRepository = userRepository;
     }
 
+    @GetMapping("/test")
+    @Operation(
+            summary = "Test endpoint",
+            description = "Simple test endpoint to verify controller is working"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Test successful - Controller is working",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = String.class),
+                            examples = @ExampleObject(value = "Controller is working")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid credentials"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error"
+            )
+    })
+    public ResponseEntity<String> testEndpoint() {
+        return ResponseEntity.ok("Controller is working");
+    }
+
     @PostMapping("/book")
     @Operation(
             summary = "Book meals for a date range",
