@@ -38,72 +38,6 @@ public class MealBookingController {
         this.userRepository = userRepository;
     }
 
-
-    @PostMapping("/book")
-    @Operation(
-            summary = "Book meals for a date range",
-            description = "Book meals for one or more days within a specified date range. The system validates geofence, cutoff times, and prevents duplicate bookings."
-    )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Meals booked successfully",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = String.class),
-                            examples = @ExampleObject(value = "Meals booked successfully")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Bad request - Invalid input or validation failed",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(value = "Meal already booked for 2026-01-25")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - Invalid credentials"
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Internal server error"
-            )
-    })
-    public ResponseEntity<?> bookMeals(
-            @Parameter(
-                    description = "Meal booking request details",
-                    required = true,
-                    schema = @Schema(implementation = MealBookingRequestDTO.class)
-            )
-            @Valid @RequestBody MealBookingRequestDTO request
-    ) {
-        // create user for testing
-        String testEmail = "test@example.com";
-        User user = userRepository.findByEmail(testEmail)
-                .orElseGet(() -> {
-                    User newUser = new User();
-                    newUser.setName("Test User");
-                    newUser.setEmail(testEmail);
-                    newUser.setRole(Role.USER);
-                    newUser.setCreatedAt(java.time.LocalDateTime.now());
-                    newUser.setExternalId("test-external-id");
-                    newUser.setLastLoginAt(java.time.LocalDateTime.now());
-                    return userRepository.save(newUser);
-                });
-
-        mealBookingService.bookMeals(
-                user,
-                request.getStartDate(),
-                request.getEndDate(),
-                request.getLatitude(),
-                request.getLongitude()
-        );
-
-        return ResponseEntity.ok("Meals booked successfully");
-    }
-
     @DeleteMapping("/cancel")
     @Operation(
             summary = "Cancel meal booking",
@@ -266,10 +200,10 @@ public class MealBookingController {
                 : ResponseEntity.badRequest().body(response);
     }
 
-    @GetMapping("/upcoming")
+    @PostMapping("/upcoming")
     @Operation(
             summary = "Get user's upcoming meal bookings",
-            description = "Retrieve all upcoming (BOOKED) meal bookings for the authenticated user, sorted by date (newest first). Includes today and upcoming dates."
+            description = "Retrieve all upcoming (BOOKED) meal bookings for a specific user, sorted by date (newest first). Includes today and upcoming dates."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -282,6 +216,14 @@ public class MealBookingController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request - Invalid user ID",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"User not found\"}")
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "401",
                     description = "Unauthorized - Invalid credentials"
             ),
@@ -291,9 +233,14 @@ public class MealBookingController {
             )
     })
     public ResponseEntity<UpcomingMealsResponseDTO> getUpcomingMealBookings(
-            @AuthenticationPrincipal UserDetails userDetails
+            @Parameter(
+                    description = "User ID request",
+                    required = true,
+                    schema = @Schema(implementation = UserIdRequestDTO.class)
+            )
+            @Valid @RequestBody UserIdRequestDTO request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
