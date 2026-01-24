@@ -10,10 +10,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.example.dto.MealBookingRequestDTO;
-import org.example.dto.MealBookingResponseDTO;
-import org.example.dto.MealCancelRequestDTO;
-import org.example.dto.SingleMealBookingRequestDTO;
+import org.example.dto.*;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
@@ -207,6 +204,62 @@ public class MealBookingController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         MealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
+
+        return response.isSuccess()
+                ? ResponseEntity.ok(response)
+                : ResponseEntity.badRequest().body(response);
+    }
+
+
+    @PostMapping("/book-range")
+    @Operation(
+            summary = "Book meals for a date range",
+            description = "Book meals for multiple dates. Validates each date, cutoff times, and prevents duplicate bookings."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Range booking processed successfully",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = RangeMealBookingResponseDTO.class),
+                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"All meals booked successfully from 2026-01-25 to 2026-01-27\", \"bookedDates\": [\"2026-01-25\", \"2026-01-26\", \"2026-01-27\"]}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request - Invalid input or validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"Some bookings failed\", \"failedBookings\": [\"2026-01-26 - Already booked\"]}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid credentials"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error"
+            )
+    })
+    public ResponseEntity<RangeMealBookingResponseDTO> bookRangeMeals(
+            @Parameter(
+                    description = "Range meal booking request",
+                    required = true,
+                    schema = @Schema(implementation = RangeMealBookingRequestDTO.class)
+            )
+            @Valid @RequestBody RangeMealBookingRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(
+                user,
+                request.getStartDate(),
+                request.getEndDate()
+        );
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)

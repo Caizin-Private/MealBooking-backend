@@ -2,6 +2,7 @@ package org.example.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.entity.BookingStatus;
 import org.example.entity.CutoffConfig;
 import org.example.entity.MealBooking;
@@ -15,6 +16,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -172,5 +175,84 @@ public class MealBookingServiceImpl implements MealBookingService {
         } catch (Exception e) {
             return MealBookingResponseDTO.failure("Booking failed: " + e.getMessage());
         }
+    }
+
+
+    @Override
+    public RangeMealBookingResponseDTO bookRangeMeals(User user, LocalDate startDate, LocalDate endDate) {
+        List<String> bookedDates = new ArrayList<>();
+        List<String> failedBookings = new ArrayList<>();
+
+        try {
+            // 1️⃣ Date range validation
+            LocalDate today = LocalDate.now(clock);
+            LocalTime now = LocalTime.now(clock);
+
+            if (startDate.isBefore(today)) {
+                return RangeMealBookingResponseDTO.failure("Cannot book meals for past dates", null);
+            }
+
+            if (endDate.isBefore(startDate)) {
+                return RangeMealBookingResponseDTO.failure("End date cannot be before start date", null);
+            }
+
+            // 2️⃣ Loop through date range
+            for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+                try {
+                    // 3️⃣ Cutoff time validation (10 PM for tomorrow)
+                    if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                        failedBookings.add(date + " - Booking closed after 10 PM");
+                        continue;
+                    }
+
+                    // 4️⃣ Duplicate booking check
+                    if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
+                        failedBookings.add(date + " - Already booked");
+                        continue;
+                    }
+
+                    // 5️⃣ Create booking
+                    MealBooking booking = MealBooking.builder()
+                            .user(user)
+                            .bookingDate(date)
+                            .bookedAt(LocalDateTime.now(clock))
+                            .status(BookingStatus.BOOKED)
+                            .availableForLunch(true)
+                            .build();
+
+                    mealBookingRepository.save(booking);
+                    bookedDates.add(date.toString());
+
+                } catch (Exception e) {
+                    failedBookings.add(date + " - " + e.getMessage());
+                }
+            }
+
+            // 6️⃣ Send notification for range booking
+            if (!bookedDates.isEmpty()) {
+                pushNotificationService.sendBookingConfirmation(user.getId(), startDate, endDate);
+            }
+
+            // 7️⃣ Return response
+            if (bookedDates.isEmpty()) {
+                return RangeMealBookingResponseDTO.failure("No meals were booked", failedBookings);
+            } else if (failedBookings.isEmpty()) {
+                return RangeMealBookingResponseDTO.success(
+                        "All meals booked successfully from " + startDate + " to " + endDate,
+                        bookedDates
+                );
+            } else {
+                return RangeMealBookingResponseDTO.success(
+                        "Some meals booked successfully from " + startDate + " to " + endDate,
+                        bookedDates
+                );
+            }
+
+        } catch (Exception e) {
+            return RangeMealBookingResponseDTO.failure("Range booking failed: " + e.getMessage(), failedBookings);
+        }
+
+
+
     }
 }

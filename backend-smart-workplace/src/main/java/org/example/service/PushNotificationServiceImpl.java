@@ -38,12 +38,17 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        // TEMP: just log (later → email / push / SMS)
-        System.out.println(
-                "Meal booking confirmed for user " + userId +
-                        " from " + startDate +
-                        " to " + endDate
-        );
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .title("Meal Booking Confirmed")
+                .message("Your meals have been booked from " + startDate + " to " + endDate)
+                .type(NotificationType.BOOKING_CONFIRMATION)
+                .sent(false)
+                .scheduledAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(notification);
+        System.out.println("Range booking notification stored for user " + userId);
     }
 
     @Override
