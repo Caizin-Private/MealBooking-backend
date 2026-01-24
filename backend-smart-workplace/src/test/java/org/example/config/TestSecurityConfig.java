@@ -31,7 +31,7 @@ public class TestSecurityConfig {
     @Primary
     public MealBookingConfig testMealBookingConfig() {
         MealBookingConfig config = new MealBookingConfig();
-        //a fix cutoff for tests
+        // Set a fixed cutoff time for testing
         config.setCutoffTime(java.time.LocalTime.of(22, 0));
         return config;
     }
