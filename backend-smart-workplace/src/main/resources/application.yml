@@ -110,6 +110,16 @@ logging:
     org.example: INFO
     root: INFO
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+
 meal-booking:
   cutoff-time: "22:00"
 
