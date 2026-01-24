@@ -17,7 +17,6 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -27,7 +26,6 @@ public class MealReminderScheduler {
     private final UserRepository userRepository;
     private final MealBookingRepository mealBookingRepository;
     private final PushNotificationService pushNotificationService;
-    private final CutoffConfigRepository cutoffConfigRepository;
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final Clock clock;
@@ -35,17 +33,10 @@ public class MealReminderScheduler {
     @Scheduled(cron = "0 0 18 * * *") // 6 PM
     public void sendMealBookingReminders() {
 
-        Optional<CutoffConfig> cutoffOpt =
-                cutoffConfigRepository.findTopByOrderByIdDesc();
-
-        if (cutoffOpt.isEmpty()) {
-            return;
-        }
-
-        CutoffConfig cutoffConfig = cutoffOpt.get();
-
+        // ---------- CUTOFF CONFIG (Fixed at 10 PM) ----------
+        LocalTime cutoffTime = LocalTime.of(22, 0); // 10 PM
         LocalTime now = LocalTime.now(clock);
-        if (now.isAfter(cutoffConfig.getCutoffTime())) {
+        if (now.isAfter(cutoffTime)) {
             return;
         }
 

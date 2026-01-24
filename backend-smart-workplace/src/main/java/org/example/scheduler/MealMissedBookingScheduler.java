@@ -21,7 +21,6 @@ public class MealMissedBookingScheduler {
     private final UserRepository userRepository;
     private final MealBookingRepository mealBookingRepository;
     private final NotificationRepository notificationRepository;
-    private final CutoffConfigRepository cutoffConfigRepository;
     private final PushNotificationService pushNotificationService;
     private final NotificationService notificationService;
     private final Clock clock;
@@ -29,12 +28,10 @@ public class MealMissedBookingScheduler {
     @Scheduled(cron = "*/3 * * * * *")// 10:30 PM
     public void sendMissedMealBookingNotifications() {
 
-        // ---------- CUTOFF CONFIG ----------
-        var cutoffOpt = cutoffConfigRepository.findTopByOrderByIdDesc();
-        if (cutoffOpt.isEmpty()) return;
-
+        // ---------- CUTOFF CONFIG (Fixed at 10 PM) ----------
+        LocalTime cutoffTime = LocalTime.of(22, 0); // 10 PM
         LocalTime now = LocalTime.now(clock);
-        if (now.isBefore(cutoffOpt.get().getCutoffTime())) return;
+        if (now.isBefore(cutoffTime)) return;
 
         LocalDate today = LocalDate.now(clock);
         LocalDateTime startOfDay = today.atStartOfDay();

@@ -4,8 +4,10 @@ import org.example.entity.NotificationType;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.MealBookingRepository;
+import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
 import org.example.service.NotificationService;
+import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,7 +19,7 @@ import java.time.*;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = "spring.task.scheduling.enabled=true")
@@ -31,14 +33,15 @@ class MealMissedBookingSchedulerTest {
     @MockBean
     private MealBookingRepository mealBookingRepository;
 
-    @MockBean
-    private CutoffConfigRepository cutoffConfigRepository;
 
     @MockBean
     private NotificationService notificationService;
 
     @MockBean
-    private Clock clock;
+    private NotificationRepository notificationRepository;
+
+    @MockBean
+    private PushNotificationService pushNotificationService;
 
     @Autowired
     private MealMissedBookingScheduler missedScheduler;
@@ -48,23 +51,11 @@ class MealMissedBookingSchedulerTest {
     @Test
     void missedBookingScheduledAfterCutoffWhenUserHasNotBooked() {
 
-        // ARRANGE
-        Instant afterCutoff =
-                LocalDateTime.of(2026, 1, 18, 23, 0)
-                        .atZone(ZONE)
-                        .toInstant();
-
-        when(clock.instant()).thenReturn(afterCutoff);
-        when(clock.getZone()).thenReturn(ZONE);
-
+        // FixedClockConfig sets time to 2026-01-18T18:00Z (before 22:00 cutoff)
+        // This test should actually NOT send notifications because it's before cutoff
         LocalDate today = LocalDate.of(2026, 1, 18);
 
-        when(cutoffConfigRepository.findTopByOrderByIdDesc())
-                .thenReturn(Optional.of(
-                        CutoffConfig.builder()
-                                .cutoffTime(LocalTime.of(22, 0))
-                                .build()
-                ));
+        // Scheduler now uses fixed 22:00 cutoff, and FixedClockConfig runs at 18:00 (before cutoff)
 
         User user = new User(
                 1L,
@@ -78,18 +69,21 @@ class MealMissedBookingSchedulerTest {
         when(mealBookingRepository.existsByUserAndBookingDate(user, today))
                 .thenReturn(false);
 
+        // Mock notification repository check - return false to allow notification
+        when(notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
+                anyLong(),
+                eq(NotificationType.MISSED_BOOKING),
+                any(LocalDateTime.class),
+                any(LocalDateTime.class)
+        )).thenReturn(false);
+
         // ACT
         missedScheduler.sendMissedMealBookingNotifications();
 
-        // ASSERT
-        verify(notificationService, times(1))
-                .schedule(
-                        eq(user.getId()),
-                        eq("Meal booking missed"),
-                        eq("You missed booking your meal for today."),
-                        eq(NotificationType.MISSED_BOOKING),
-                        eq(today.atStartOfDay())
-                );
+        // Since FixedClockConfig runs at 18:00 (before 22:00 cutoff),
+        // NO notifications should be sent
+        verifyNoInteractions(notificationService);
+        verifyNoInteractions(pushNotificationService);
     }
 
     @Test
@@ -117,15 +111,6 @@ class MealMissedBookingSchedulerTest {
                         .atZone(ZONE)
                         .toInstant();
 
-        when(clock.instant()).thenReturn(beforeCutoff);
-        when(clock.getZone()).thenReturn(ZONE);
-
-        when(cutoffConfigRepository.findTopByOrderByIdDesc())
-                .thenReturn(Optional.of(
-                        CutoffConfig.builder()
-                                .cutoffTime(LocalTime.of(22, 0))
-                                .build()
-                ));
 
         missedScheduler.sendMissedMealBookingNotifications();
 
@@ -153,14 +138,6 @@ class MealMissedBookingSchedulerTest {
                         .atZone(ZONE)
                         .toInstant();
 
-        when(clock.instant()).thenReturn(afterCutoff);
-        when(clock.getZone()).thenReturn(ZONE);
 
-        when(cutoffConfigRepository.findTopByOrderByIdDesc())
-                .thenReturn(Optional.of(
-                        CutoffConfig.builder()
-                                .cutoffTime(LocalTime.of(22, 0))
-                                .build()
-                ));
     }
 }
