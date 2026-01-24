@@ -33,5 +33,10 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
             BookingStatus status
     );
 
+    List<MealBooking> findByUserOrderByBookingDateDesc(User user);
 
+    List<MealBooking> findByUserAndStatusOrderByBookingDateDesc(User user, BookingStatus status);
 }
+
+
+

@@ -3,6 +3,7 @@ package org.example.service;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
+import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.entity.BookingStatus;
 import org.example.entity.CutoffConfig;
 import org.example.entity.MealBooking;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,68 +32,6 @@ public class MealBookingServiceImpl implements MealBookingService {
     private final CutoffConfigRepository cutoffConfigRepository;
     private final Clock clock;
 
-    @Override
-    public void bookMeals(
-            User user,
-            LocalDate startDate,
-            LocalDate endDate,
-            double latitude,
-            double longitude
-    ) {
-
-        /* 1️⃣ Geo-fence validation */
-        if (!geoFenceService.isInsideAllowedArea(latitude, longitude)) {
-            throw new RuntimeException("User outside allowed location");
-        }
-
-        /* 2️⃣ Date range validation */
-        LocalDate today = LocalDate.now(clock);
-
-        if (startDate.isBefore(today)) {
-            throw new RuntimeException("Cannot book meals for past dates");
-        }
-
-        if (endDate.isBefore(startDate)) {
-            throw new RuntimeException("End date cannot be before start date");
-        }
-
-        /* 3️⃣ Cutoff config */
-        CutoffConfig cutoffConfig = cutoffConfigRepository
-                .findTopByOrderByIdDesc()
-                .orElseThrow(() -> new RuntimeException("Cutoff config not set"));
-
-        LocalTime now = LocalTime.now(clock);
-
-        /* 4️⃣ Loop through date range */
-        for (LocalDate date = startDate;
-             !date.isAfter(endDate);
-             date = date.plusDays(1)) {
-
-            validateBookingDate(
-                    date,
-                    today,
-                    now,
-                    cutoffConfig,
-                    user
-            );
-
-            MealBooking booking = MealBooking.builder()
-                    .user(user)
-                    .bookingDate(date)
-                    .bookedAt(LocalDateTime.now(clock))
-                    .status(BookingStatus.BOOKED)
-                    .build();
-
-            mealBookingRepository.save(booking);
-        }
-
-        /* 5️⃣ Push notification (once for whole range) */
-        pushNotificationService.sendBookingConfirmation(
-                user.getId(),
-                startDate,
-                endDate
-        );
-    }
 
     /* 🔒 Internal per-date business rules */
     private void validateBookingDate(
@@ -253,8 +193,32 @@ public class MealBookingServiceImpl implements MealBookingService {
         } catch (Exception e) {
             return RangeMealBookingResponseDTO.failure("Range booking failed: " + e.getMessage(), failedBookings);
         }
+    }
 
+    @Override
+    public UpcomingMealsResponseDTO getUpcomingMeals(User user) {
+        try {
+            LocalDate today = LocalDate.now(clock);
+            List<MealBooking> allBookings = mealBookingRepository.findByUserOrderByBookingDateDesc(user);
 
+            List<UpcomingMealsResponseDTO.MealBookingInfo> bookingInfos = allBookings.stream()
+                    .filter(booking -> booking.getStatus() == BookingStatus.BOOKED && !booking.getBookingDate().isBefore(today))
+                    .map(this::convertToBookingInfo)
+                    .collect(Collectors.toList());
 
+            return UpcomingMealsResponseDTO.success(
+                    "Retrieved " + bookingInfos.size() + " upcoming meal bookings",
+                    bookingInfos
+            );
+
+        } catch (Exception e) {
+            return UpcomingMealsResponseDTO.failure("Failed to retrieve upcoming meals: " + e.getMessage());
+        }
+    }
+
+    private UpcomingMealsResponseDTO.MealBookingInfo convertToBookingInfo(MealBooking booking) {
+        return new UpcomingMealsResponseDTO.MealBookingInfo(
+                booking.getBookingDate()
+        );
     }
 }

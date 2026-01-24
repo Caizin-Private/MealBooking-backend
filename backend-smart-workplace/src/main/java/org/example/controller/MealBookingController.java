@@ -265,4 +265,41 @@ public class MealBookingController {
                 ? ResponseEntity.ok(response)
                 : ResponseEntity.badRequest().body(response);
     }
+
+    @GetMapping("/upcoming")
+    @Operation(
+            summary = "Get user's upcoming meal bookings",
+            description = "Retrieve all upcoming (BOOKED) meal bookings for the authenticated user, sorted by date (newest first). Includes today and upcoming dates."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Upcoming meal bookings retrieved successfully",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = UpcomingMealsResponseDTO.class),
+                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Retrieved 3 upcoming meal bookings\", \"bookings\": [{\"bookingDate\": \"2026-01-26\"}]}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid credentials"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error"
+            )
+    })
+    public ResponseEntity<UpcomingMealsResponseDTO> getUpcomingMealBookings(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
+
+        return response.isSuccess()
+                ? ResponseEntity.ok(response)
+                : ResponseEntity.badRequest().body(response);
+    }
 }
