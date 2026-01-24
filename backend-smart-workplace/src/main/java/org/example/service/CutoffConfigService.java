@@ -1,8 +1,7 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.entity.CutoffConfig;
-import org.example.repository.CutoffConfigRepository;
+import org.example.config.MealBookingConfig;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -11,19 +10,13 @@ import java.time.LocalTime;
 @RequiredArgsConstructor
 public class CutoffConfigService {
 
-    private final CutoffConfigRepository cutoffConfigRepository;
-
-    public CutoffConfig updateCutoffTime(LocalTime cutoffTime) {
-        CutoffConfig config = CutoffConfig.builder()
-                .cutoffTime(cutoffTime)
-                .build();
-
-        return cutoffConfigRepository.save(config);
-    }
+    private final MealBookingConfig mealBookingConfig;
 
     public LocalTime getCurrentCutoffTime() {
-        return cutoffConfigRepository.findTopByOrderByIdDesc()
-                .map(CutoffConfig::getCutoffTime)
-                .orElse(LocalTime.of(10, 0)); // default fallback
+        return mealBookingConfig.getCutoffTime();
+    }
+
+    public boolean isAfterCutoffTime() {
+        return LocalTime.now().isAfter(getCurrentCutoffTime());
     }
 }
