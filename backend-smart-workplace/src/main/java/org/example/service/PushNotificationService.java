@@ -4,6 +4,8 @@ import java.time.LocalDate;
 
 public interface PushNotificationService {
 
+    void sendSingleMealBookingConfirmation(Long userId, LocalDate date);
+
     void sendBookingConfirmation(
             Long userId,
             LocalDate startDate,

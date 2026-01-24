@@ -1,6 +1,7 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.dto.MealBookingResponseDTO;
 import org.example.entity.BookingStatus;
 import org.example.entity.CutoffConfig;
 import org.example.entity.MealBooking;
@@ -129,5 +130,47 @@ public class MealBookingServiceImpl implements MealBookingService {
                 user.getId(),
                 date
         );
+    }
+
+
+    @Override
+    public MealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
+        try {
+
+            LocalDate today = LocalDate.now(clock);
+            if (date.isBefore(today)) {
+                return MealBookingResponseDTO.failure("Cannot book meals for past dates");
+            }
+
+            LocalTime now = LocalTime.now(clock);
+            if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                return MealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
+            }
+
+            if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
+                return MealBookingResponseDTO.failure("Meal already booked for " + date);
+            }
+
+            MealBooking booking = MealBooking.builder()
+                    .user(user)
+                    .bookingDate(date)
+                    .bookedAt(LocalDateTime.now(clock))
+                    .status(BookingStatus.BOOKED)
+                    .availableForLunch(true)
+                    .build();
+
+            MealBooking savedBooking = mealBookingRepository.save(booking);
+
+            pushNotificationService.sendSingleMealBookingConfirmation(user.getId(), date);
+
+            return MealBookingResponseDTO.success(
+                    "Meal booked successfully for " + date,
+                    savedBooking.getId(),
+                    date.toString()
+            );
+
+        } catch (Exception e) {
+            return MealBookingResponseDTO.failure("Booking failed: " + e.getMessage());
+        }
     }
 }

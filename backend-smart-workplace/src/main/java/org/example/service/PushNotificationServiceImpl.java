@@ -15,6 +15,23 @@ public class PushNotificationServiceImpl implements PushNotificationService {
 
     private final NotificationRepository notificationRepository;
 
+
+    @Override
+    public void sendSingleMealBookingConfirmation(Long userId, LocalDate date) {
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .title("Meal Booking Confirmed")
+                .message("Your meal has been booked for " + date)
+                .type(NotificationType.BOOKING_CONFIRMATION)
+                .sent(false)
+                .scheduledAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(notification);
+        System.out.println("🍱 Single meal booking notification stored for user " + userId);
+    }
+
+
     @Override
     public void sendBookingConfirmation(
             Long userId,

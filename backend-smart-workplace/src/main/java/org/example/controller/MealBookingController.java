@@ -11,13 +11,17 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.example.dto.MealBookingRequestDTO;
+import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.MealCancelRequestDTO;
+import org.example.dto.SingleMealBookingRequestDTO;
 import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -153,5 +157,59 @@ public class MealBookingController {
         mealBookingService.cancelMeal(user, request.getDate());
 
         return ResponseEntity.ok("Meal booking cancelled successfully");
+    }
+
+
+
+
+    @PostMapping("/book-single")
+    @Operation(
+            summary = "Book meal for a single day",
+            description = "Book a meal for a specific date. Validates date, cutoff times, and prevents duplicate bookings."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Meal booked successfully",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = MealBookingResponseDTO.class),
+                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Meal booked successfully for 2026-01-25\", \"bookingId\": 123, \"bookingDate\": \"2026-01-25\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request - Invalid input or validation failed",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"Meal already booked for 2026-01-25\"}")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Unauthorized - Invalid credentials"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal server error"
+            )
+    })
+    public ResponseEntity<MealBookingResponseDTO> bookSingleMeal(
+            @Parameter(
+                    description = "Single day meal booking request",
+                    required = true,
+                    schema = @Schema(implementation = SingleMealBookingRequestDTO.class)
+            )
+            @Valid @RequestBody SingleMealBookingRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
+
+        return response.isSuccess()
+                ? ResponseEntity.ok(response)
+                : ResponseEntity.badRequest().body(response);
     }
 }
