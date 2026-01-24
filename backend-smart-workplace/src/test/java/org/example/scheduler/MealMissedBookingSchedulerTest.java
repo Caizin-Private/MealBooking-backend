@@ -1,15 +1,11 @@
 package org.example.scheduler;
 
-import org.example.entity.CutoffConfig;
 import org.example.entity.NotificationType;
 import org.example.entity.Role;
 import org.example.entity.User;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
-import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
 import org.example.service.NotificationService;
-import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

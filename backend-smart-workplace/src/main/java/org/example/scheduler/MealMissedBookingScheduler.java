@@ -2,7 +2,6 @@ package org.example.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.entity.*;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;

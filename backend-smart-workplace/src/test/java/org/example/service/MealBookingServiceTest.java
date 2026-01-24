@@ -1,230 +1,293 @@
 package org.example.service;
 
-import org.example.entity.CutoffConfig;
+import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.RangeMealBookingResponseDTO;
+import org.example.dto.UpcomingMealsResponseDTO;
+import org.example.dto.CancelMealRequestDTO;
+import org.example.entity.BookingStatus;
 import org.example.entity.MealBooking;
-import org.example.entity.Role;
 import org.example.entity.User;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
+import org.example.repository.NotificationRepository;
+import org.example.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.context.ActiveProfiles;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
-
-import java.time.*;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class MealBookingServiceTest {
 
-    @Autowired
-    private MealBookingService mealBookingService;
-
-    @MockBean
+    @Mock
     private MealBookingRepository mealBookingRepository;
 
-    @MockBean
-    private GeoFenceService geoFenceService;
+    @Mock
+    private UserRepository userRepository;
 
-    @MockBean
+    @Mock
+    private NotificationRepository notificationRepository;
+
+    @Mock
     private PushNotificationService pushNotificationService;
 
-    @MockBean
-    private CutoffConfigRepository cutoffConfigRepository;
-
-    @MockBean
+    @Mock
     private Clock clock;
 
-    private final ZoneId ZONE = ZoneId.of("UTC");
+    @InjectMocks
+    private MealBookingServiceImpl mealBookingService;
+
+    private User testUser;
+    private LocalDate today;
+    private LocalDate tomorrow;
+    private LocalDate nextWeek;
 
     @BeforeEach
-    void setup() {
-        Instant fixedInstant =
-                LocalDateTime.of(2026, 1, 18, 12, 0)
-                        .atZone(ZONE)
-                        .toInstant();
+    void setUp() {
+        testUser = new User(1L, "Test User", "test@example.com", org.example.entity.Role.USER, LocalDateTime.now());
 
-        when(clock.instant()).thenReturn(fixedInstant);
-        when(clock.getZone()).thenReturn(ZONE);
+        // Set up fixed clock for predictable tests
+        Clock fixedClock = Clock.fixed(LocalDate.of(2026, 1, 25).atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
+        ReflectionTestUtils.setField(mealBookingService, "clock", fixedClock);
 
-        when(cutoffConfigRepository.findTopByOrderByIdDesc())
-                .thenReturn(
-                        java.util.Optional.of(
-                                CutoffConfig.builder()
-                                        .cutoffTime(LocalTime.of(22, 0))
-                                        .build()
-                        )
-                );
+        today = LocalDate.now(fixedClock);
+        tomorrow = today.plusDays(1);
+        nextWeek = today.plusDays(7);
     }
 
     @Test
-    void userCanBookFutureDates() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+    void shouldBookSingleMealSuccessfully() {
+        // Given
+        when(mealBookingRepository.existsByUserAndBookingDate(testUser, tomorrow)).thenReturn(false);
+        when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> {
+            MealBooking booking = invocation.getArgument(0);
+            booking.setId(123L);
+            return booking;
+        });
 
-        LocalDate start = LocalDate.now(clock).plusDays(2);
-        LocalDate end = start.plusDays(2);
+        // When
+        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
-
-        when(mealBookingRepository.existsByUserAndBookingDate(
-                any(User.class),
-                any(LocalDate.class)
-        )).thenReturn(false);
-
-        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
-
-        verify(mealBookingRepository, times(3)).save(any(MealBooking.class));
+        // Then
+        assertTrue(response.isSuccess());
+        assertEquals("Meal booked successfully for " + tomorrow, response.getMessage());
+        assertEquals(123L, response.getBookingId());
+        assertEquals(tomorrow.toString(), response.getBookingDate());
+        verify(pushNotificationService).sendSingleMealBookingConfirmation(testUser.getId(), tomorrow);
     }
 
     @Test
-    void bookingFailsWhenOutsideGeofence() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+    void shouldFailToBookSingleMealForPastDate() {
+        // When
+        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, today.minusDays(1));
 
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(false);
-
-        assertThrows(RuntimeException.class,
-                () -> mealBookingService.bookMeals(
-                        user,
-                        LocalDate.now(clock).plusDays(2),
-                        LocalDate.now(clock).plusDays(3),
-                        0.0,
-                        0.0
-                )
-        );
+        // Then
+        assertFalse(response.isSuccess());
+        assertEquals("Cannot book meals for past dates", response.getMessage());
+        verifyNoInteractions(pushNotificationService);
     }
 
     @Test
-    void bookingForTomorrowFailsAfterCutoff() {
+    void shouldFailToBookSingleMealForWeekend() {
+        // Given - Find next Saturday (day 6)
+        LocalDate saturday = today;
+        while (saturday.getDayOfWeek().getValue() != 6) {
+            saturday = saturday.plusDays(1);
+        }
 
-        Instant afterCutoff =
-                LocalDateTime.of(2026, 1, 18, 23, 0)
-                        .atZone(ZONE)
-                        .toInstant();
+        // When
+        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, saturday);
 
-        // 🔑 FIX
-        when(clock.instant()).thenReturn(afterCutoff);
-        when(clock.getZone()).thenReturn(ZONE);
-
-        User user = new User(
-                1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock)
-        );
-
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
-
-        assertThrows(RuntimeException.class,
-                () -> mealBookingService.bookMeals(
-                        user,
-                        LocalDate.now(clock).plusDays(1),
-                        LocalDate.now(clock).plusDays(1),
-                        10.0,
-                        10.0
-                )
-        );
-    }
-
-
-    @Test
-    void duplicateBookingFails() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
-
-        LocalDate date = LocalDate.now(clock).plusDays(2);
-
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
-
-        when(mealBookingRepository.existsByUserAndBookingDate(
-                any(User.class),
-                any(LocalDate.class)
-        )).thenReturn(true);
-
-        assertThrows(RuntimeException.class,
-                () -> mealBookingService.bookMeals(
-                        user,
-                        date,
-                        date,
-                        10.0,
-                        10.0
-                )
-        );
+        // Then
+        assertFalse(response.isSuccess());
+        assertEquals("Cannot book meals on weekends (Saturday and Sunday)", response.getMessage());
+        verifyNoInteractions(pushNotificationService);
     }
 
     @Test
-    void pushNotificationSentAfterSuccessfulBooking() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+    void shouldFailToBookSingleMealForDuplicateBooking() {
+        // Given
+        when(mealBookingRepository.existsByUserAndBookingDate(testUser, tomorrow)).thenReturn(true);
 
-        LocalDate start = LocalDate.now(clock).plusDays(2);
-        LocalDate end = start.plusDays(1);
+        // When
+        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
-
-        when(mealBookingRepository.existsByUserAndBookingDate(
-                any(User.class),
-                any(LocalDate.class)
-        )).thenReturn(false);
-
-        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
-
-        verify(pushNotificationService, times(1))
-                .sendBookingConfirmation(
-                        eq(user.getId()),
-                        eq(start),
-                        eq(end)
-                );
-
+        // Then
+        assertFalse(response.isSuccess());
+        assertEquals("Meal already booked for " + tomorrow, response.getMessage());
+        verifyNoInteractions(pushNotificationService);
     }
 
     @Test
-    void multipleDatesAreSavedIndividually() {
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
+    void shouldBookRangeMealsSuccessfully() {
+        // Given
+        LocalDate startDate = tomorrow;
+        LocalDate endDate = tomorrow.plusDays(2);
 
-        LocalDate start = LocalDate.now(clock).plusDays(2);
-        LocalDate end = start.plusDays(3); // 4 days total
+        when(mealBookingRepository.existsByUserAndBookingDate(eq(testUser), any(LocalDate.class))).thenReturn(false);
+        when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> {
+            MealBooking booking = invocation.getArgument(0);
+            booking.setId(System.currentTimeMillis());
+            return booking;
+        });
 
-        when(geoFenceService.isInsideAllowedArea(anyDouble(), anyDouble()))
-                .thenReturn(true);
+        // When
+        RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(testUser, startDate, endDate);
 
-        when(mealBookingRepository.existsByUserAndBookingDate(
-                any(User.class),
-                any(LocalDate.class)
-        )).thenReturn(false);
-
-        mealBookingService.bookMeals(user, start, end, 10.0, 10.0);
-
-        verify(mealBookingRepository, times(4)).save(any(MealBooking.class));
+        // Then
+        assertTrue(response.isSuccess());
+        assertEquals(3, response.getBookedDates().size());
+        verify(pushNotificationService).sendBookingConfirmation(testUser.getId(), startDate, endDate);
     }
 
     @Test
-    void cancelBookingDeletesRecordAndSendsNotification() {
-
-        User user = new User(1L, "User", "user@test.com", Role.USER, LocalDateTime.now(clock));
-        LocalDate date = LocalDate.now(clock).plusDays(2);
-
-        MealBooking booking = MealBooking.builder()
-                .user(user)
-                .bookingDate(date)
+    void shouldGetUpcomingMealsSuccessfully() {
+        // Given
+        MealBooking pastBooking = MealBooking.builder()
+                .id(1L)
+                .user(testUser)
+                .bookingDate(today.minusDays(1))
+                .status(BookingStatus.BOOKED)
                 .build();
 
-        when(mealBookingRepository.findByUserAndBookingDate(user, date))
-                .thenReturn(Optional.of(booking));
+        MealBooking todayBooking = MealBooking.builder()
+                .id(2L)
+                .user(testUser)
+                .bookingDate(today)
+                .status(BookingStatus.BOOKED)
+                .build();
 
-        mealBookingService.cancelMeal(user, date);
+        MealBooking futureBooking = MealBooking.builder()
+                .id(3L)
+                .user(testUser)
+                .bookingDate(tomorrow)
+                .status(BookingStatus.BOOKED)
+                .build();
 
-        verify(mealBookingRepository).delete(booking);
-        verify(pushNotificationService)
-                .sendCancellationConfirmation(user.getId(), date);
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(4L)
+                .user(testUser)
+                .bookingDate(nextWeek)
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        List<MealBooking> allBookings = Arrays.asList(pastBooking, todayBooking, futureBooking, cancelledBooking);
+        when(mealBookingRepository.findByUserOrderByBookingDateDesc(testUser)).thenReturn(allBookings);
+
+        // When
+        UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(testUser);
+
+        // Then
+        assertNotNull(response);
+        assertEquals(2, response.getBookedDates().size()); // Only today and future bookings with BOOKED status
+        assertTrue(response.getBookedDates().contains(today));
+        assertTrue(response.getBookedDates().contains(tomorrow));
+        assertFalse(response.getBookedDates().contains(today.minusDays(1))); // Past date
+        assertFalse(response.getBookedDates().contains(nextWeek)); // CANCELLED status
     }
 
+    @Test
+    void shouldCancelMealSuccessfully() {
+        // Given
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setUserId(1L);
+        request.setBookingDate(tomorrow);
+
+        MealBooking existingBooking = MealBooking.builder()
+                .id(123L)
+                .user(testUser)
+                .bookingDate(tomorrow)
+                .status(BookingStatus.BOOKED)
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(mealBookingRepository.findByUserAndBookingDate(testUser, tomorrow)).thenReturn(Optional.of(existingBooking));
+
+        // When
+        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+
+        // Then
+        assertTrue(response.isSuccess());
+        assertEquals("Meal cancelled successfully for " + tomorrow, response.getMessage());
+        assertEquals(123L, response.getBookingId());
+        assertEquals(tomorrow.toString(), response.getBookingDate());
+
+        verify(mealBookingRepository).delete(existingBooking);
+        verify(notificationRepository).save(any());
+        verify(pushNotificationService).sendCancellationConfirmation(testUser.getId(), tomorrow);
+    }
+
+    @Test
+    void shouldFailToCancelMealForPastDate() {
+        // Given
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setUserId(1L);
+        request.setBookingDate(today.minusDays(1));
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+
+        // When
+        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+
+        // Then
+        assertFalse(response.isSuccess());
+        assertEquals("Cannot cancel meals for past dates", response.getMessage());
+        verifyNoInteractions(mealBookingRepository);
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
+    void shouldFailToCancelMealWhenUserNotFound() {
+        // Given
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setUserId(999L);
+        request.setBookingDate(tomorrow);
+
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // When
+        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+
+        // Then
+        assertFalse(response.isSuccess());
+        assertTrue(response.getMessage().contains("User not found"));
+        verifyNoInteractions(mealBookingRepository);
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
+    void shouldFailToCancelMealWhenBookingNotFound() {
+        // Given
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setUserId(1L);
+        request.setBookingDate(tomorrow);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        when(mealBookingRepository.findByUserAndBookingDate(testUser, tomorrow)).thenReturn(Optional.empty());
+
+        // When
+        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+
+        // Then
+        assertFalse(response.isSuccess());
+        assertTrue(response.getMessage().contains("No booking found"));
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(pushNotificationService);
+    }
 }

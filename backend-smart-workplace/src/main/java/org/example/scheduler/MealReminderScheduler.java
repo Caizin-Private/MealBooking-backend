@@ -2,10 +2,8 @@ package org.example.scheduler;
 
 
 import lombok.RequiredArgsConstructor;
-import org.example.entity.CutoffConfig;
 import org.example.entity.NotificationType;
 import org.example.entity.Role;
-import org.example.repository.CutoffConfigRepository;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
@@ -14,7 +12,6 @@ import org.example.service.PushNotificationService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.example.entity.Notification;
 
 import java.time.Clock;
 import java.time.LocalDate;

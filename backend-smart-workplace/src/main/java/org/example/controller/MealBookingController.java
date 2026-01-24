@@ -15,8 +15,8 @@ import org.example.dto.SingleMealBookingRequestDTO;
 import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.RangeMealBookingRequestDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
-import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.dto.UpcomingMealsRequestDTO;
+import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.dto.CancelMealRequestDTO;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
@@ -146,7 +146,7 @@ public class MealBookingController {
     @PostMapping("/upcoming")
     @Operation(
             summary = "Get user's upcoming meal bookings",
-            description = "Retrieve all upcoming (BOOKED) meal bookings for a specific user, sorted by date (newest first). Includes today and upcoming dates."
+            description = "Retrieve all upcoming (BOOKED) meal bookings for a specific user. Shows dates of meals the user has booked but hasn't received yet."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -155,7 +155,7 @@ public class MealBookingController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = UpcomingMealsResponseDTO.class),
-                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Retrieved 3 upcoming meal bookings\", \"bookings\": [{\"bookingDate\": \"2026-01-26\"}]}")
+                            examples = @ExampleObject(value = "{\"bookedDates\": [\"2026-01-26\", \"2026-01-27\", \"2026-01-28\"]}")
                     )
             ),
             @ApiResponse(
@@ -163,7 +163,7 @@ public class MealBookingController {
                     description = "Bad request - Invalid user ID",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"User not found\"}")
+                            examples = @ExampleObject(value = "{\"error\": \"User not found\"}")
                     )
             ),
             @ApiResponse(
@@ -177,7 +177,7 @@ public class MealBookingController {
     })
     public ResponseEntity<UpcomingMealsResponseDTO> getUpcomingMealBookings(
             @Parameter(
-                    description = "User ID request",
+                    description = "Upcoming meals request",
                     required = true,
                     schema = @Schema(implementation = UpcomingMealsRequestDTO.class)
             )
@@ -188,9 +188,7 @@ public class MealBookingController {
 
         UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
 
-        return response.isSuccess()
-                ? ResponseEntity.ok(response)
-                : ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/cancel")
