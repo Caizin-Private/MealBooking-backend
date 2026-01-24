@@ -45,4 +45,14 @@ public class User {
     @Column(name = "last_login_at")
     @Schema(description = "Timestamp of the last login", example = "2026-01-23T15:30:00")
     private LocalDateTime lastLoginAt;//to keep track of user last login
+
+    public User(Long id, String name, String email, Role role, LocalDateTime createdAt) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.externalId = null;
+        this.lastLoginAt = null;
+    }
 }
