@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/cutoff")
 @RequiredArgsConstructor
 @Tag(name = "Cutoff Configuration", description = "APIs for managing meal booking cutoff times")
-@SecurityRequirement(name = "basicAuth")
+@SecurityRequirement(name = "bearerAuth")
 public class CutoffConfigController {
 
     private final CutoffConfigService cutoffConfigService;

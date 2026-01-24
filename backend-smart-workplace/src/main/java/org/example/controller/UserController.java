@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "APIs for managing user accounts and profiles")
-@SecurityRequirement(name = "basicAuth")
+@SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserRepository userRepository;
