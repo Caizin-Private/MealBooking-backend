@@ -139,10 +139,13 @@ public class MealBookingServiceImpl implements MealBookingService {
     @Override
     public MealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
         try {
-
             LocalDate today = LocalDate.now(clock);
             if (date.isBefore(today)) {
                 return MealBookingResponseDTO.failure("Cannot book meals for past dates");
+            }
+
+            if (date.getDayOfWeek().getValue() >= 6) {
+                return MealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
             }
 
             LocalTime now = LocalTime.now(clock);
@@ -184,7 +187,6 @@ public class MealBookingServiceImpl implements MealBookingService {
         List<String> failedBookings = new ArrayList<>();
 
         try {
-            // 1️⃣ Date range validation
             LocalDate today = LocalDate.now(clock);
             LocalTime now = LocalTime.now(clock);
 
@@ -196,22 +198,24 @@ public class MealBookingServiceImpl implements MealBookingService {
                 return RangeMealBookingResponseDTO.failure("End date cannot be before start date", null);
             }
 
-            // 2️⃣ Loop through date range
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 try {
-                    // 3️⃣ Cutoff time validation (10 PM for tomorrow)
+
+                    if (date.getDayOfWeek().getValue() >= 6) {
+                        failedBookings.add(date + " - Cannot book on weekends (Saturday and Sunday)");
+                        continue;
+                    }
+
                     if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
                         failedBookings.add(date + " - Booking closed after 10 PM");
                         continue;
                     }
 
-                    // 4️⃣ Duplicate booking check
                     if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
                         failedBookings.add(date + " - Already booked");
                         continue;
                     }
 
-                    // 5️⃣ Create booking
                     MealBooking booking = MealBooking.builder()
                             .user(user)
                             .bookingDate(date)
@@ -228,12 +232,10 @@ public class MealBookingServiceImpl implements MealBookingService {
                 }
             }
 
-            // 6️⃣ Send notification for range booking
             if (!bookedDates.isEmpty()) {
                 pushNotificationService.sendBookingConfirmation(user.getId(), startDate, endDate);
             }
 
-            // 7️⃣ Return response
             if (bookedDates.isEmpty()) {
                 return RangeMealBookingResponseDTO.failure("No meals were booked", failedBookings);
             } else if (failedBookings.isEmpty()) {
