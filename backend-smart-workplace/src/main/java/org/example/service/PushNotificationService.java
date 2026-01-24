@@ -21,5 +21,8 @@ public interface PushNotificationService {
 
     void sendLunchDefaultedNotification(Long userId, LocalDate date);
 
+    void sendLunchAvailableNotification(Long userId, LocalDate date);
+
+
 
 }
