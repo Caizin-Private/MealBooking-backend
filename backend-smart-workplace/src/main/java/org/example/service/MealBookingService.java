@@ -17,6 +17,3 @@ public interface MealBookingService {
 
     MealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request);
 }
-
-
-

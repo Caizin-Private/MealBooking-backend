@@ -34,12 +34,10 @@ public class MealBookingServiceImpl implements MealBookingService {
     @Override
     public MealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
         try {
-
             LocalDate today = LocalDate.now(clock);
             if (date.isBefore(today)) {
                 return MealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
-
 
             if (date.getDayOfWeek().getValue() >= 6) {
                 return MealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
@@ -64,7 +62,6 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
 
-            // 6️⃣ Send notification
             pushNotificationService.sendSingleMealBookingConfirmation(user.getId(), date);
 
             return MealBookingResponseDTO.success(
@@ -84,7 +81,6 @@ public class MealBookingServiceImpl implements MealBookingService {
         List<String> failedBookings = new ArrayList<>();
 
         try {
-            // 1️⃣ Date range validation
             LocalDate today = LocalDate.now(clock);
             LocalTime now = LocalTime.now(clock);
 
@@ -98,6 +94,7 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
                 try {
+
                     if (date.getDayOfWeek().getValue() >= 6) {
                         failedBookings.add(date + " - Cannot book on weekends (Saturday and Sunday)");
                         continue;
@@ -154,23 +151,15 @@ public class MealBookingServiceImpl implements MealBookingService {
 
     @Override
     public UpcomingMealsResponseDTO getUpcomingMeals(User user) {
-        try {
-            LocalDate today = LocalDate.now(clock);
-            List<MealBooking> allBookings = mealBookingRepository.findByUserOrderByBookingDateDesc(user);
+        LocalDate today = LocalDate.now(clock);
+        List<MealBooking> allBookings = mealBookingRepository.findByUserOrderByBookingDateDesc(user);
 
-            List<UpcomingMealsResponseDTO.MealBookingInfo> bookingInfos = allBookings.stream()
-                    .filter(booking -> booking.getStatus() == BookingStatus.BOOKED && !booking.getBookingDate().isBefore(today))
-                    .map(this::convertToBookingInfo)
-                    .collect(Collectors.toList());
+        List<LocalDate> bookedDates = allBookings.stream()
+                .filter(booking -> booking.getStatus() == BookingStatus.BOOKED && !booking.getBookingDate().isBefore(today))
+                .map(MealBooking::getBookingDate)
+                .collect(Collectors.toList());
 
-            return UpcomingMealsResponseDTO.success(
-                    "Retrieved " + bookingInfos.size() + " upcoming meal bookings",
-                    bookingInfos
-            );
-
-        } catch (Exception e) {
-            return UpcomingMealsResponseDTO.failure("Failed to retrieve upcoming meals: " + e.getMessage());
-        }
+        return new UpcomingMealsResponseDTO(bookedDates);
     }
 
     @Override
@@ -211,15 +200,8 @@ public class MealBookingServiceImpl implements MealBookingService {
                     bookingDate.toString()
             );
 
-
         } catch (Exception e) {
             return MealBookingResponseDTO.failure("Cancellation failed: " + e.getMessage());
         }
-    }
-
-    private UpcomingMealsResponseDTO.MealBookingInfo convertToBookingInfo(MealBooking booking) {
-        return new UpcomingMealsResponseDTO.MealBookingInfo(
-                booking.getBookingDate()
-        );
     }
 }

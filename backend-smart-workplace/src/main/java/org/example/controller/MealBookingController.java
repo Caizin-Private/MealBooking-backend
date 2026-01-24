@@ -16,7 +16,7 @@ import org.example.dto.MealBookingResponseDTO;
 import org.example.dto.RangeMealBookingRequestDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
-import org.example.dto.UserIdRequestDTO;
+import org.example.dto.UpcomingMealsRequestDTO;
 import org.example.dto.CancelMealRequestDTO;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
@@ -179,9 +179,9 @@ public class MealBookingController {
             @Parameter(
                     description = "User ID request",
                     required = true,
-                    schema = @Schema(implementation = UserIdRequestDTO.class)
+                    schema = @Schema(implementation = UpcomingMealsRequestDTO.class)
             )
-            @Valid @RequestBody UserIdRequestDTO request
+            @Valid @RequestBody UpcomingMealsRequestDTO request
     ) {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));

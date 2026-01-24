@@ -4,13 +4,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.LocalDate;
-import java.util.List;
+import jakarta.validation.constraints.NotNull;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpcomingMealsResponseDTO {
+public class UpcomingMealsRequestDTO {
 
-    private List<LocalDate> bookedDates;
+    @NotNull(message = "User ID is required")
+    private Long userId;
 }
