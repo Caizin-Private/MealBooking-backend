@@ -111,6 +111,10 @@ logging:
     org.example: INFO
     root: INFO
 
+meal-booking:
+  cutoff-time: "22:00"  # Fixed cutoff time - users cannot book meals after 10 PM
+
+
 office:
   latitude: 18.5204
   longitude: 73.8567
