@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.example.dto.MealBookingRequestDTO;
 import org.example.dto.MealCancelRequestDTO;
+import org.example.entity.Role;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
 import org.example.service.MealBookingService;
@@ -71,7 +72,6 @@ public class MealBookingController {
             )
     })
     public ResponseEntity<?> bookMeals(
-            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails,
             @Parameter(
                     description = "Meal booking request details",
                     required = true,
@@ -79,8 +79,19 @@ public class MealBookingController {
             )
             @Valid @RequestBody MealBookingRequestDTO request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        // create user for testing
+        String testEmail = "test@example.com";
+        User user = userRepository.findByEmail(testEmail)
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setName("Test User");
+                    newUser.setEmail(testEmail);
+                    newUser.setRole(Role.USER);
+                    newUser.setCreatedAt(java.time.LocalDateTime.now());
+                    newUser.setExternalId("test-external-id");
+                    newUser.setLastLoginAt(java.time.LocalDateTime.now());
+                    return userRepository.save(newUser);
+                });
 
         mealBookingService.bookMeals(
                 user,
@@ -126,7 +137,6 @@ public class MealBookingController {
             )
     })
     public ResponseEntity<String> cancelMeal(
-            @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails,
             @Parameter(
                     description = "Meal cancellation request",
                     required = true,
@@ -134,10 +144,12 @@ public class MealBookingController {
             )
             @Valid @RequestBody MealCancelRequestDTO request
     ) {
+        // For testing without authentication, use the same test user
+        String testEmail = "test@example.com";
         User user =
                 userRepository
-                        .findByEmail(userDetails.getUsername())
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+                        .findByEmail(testEmail)
+                        .orElseThrow(() -> new RuntimeException("Test user not found"));
 
         mealBookingService.cancelMeal(user, request.getDate());
 
