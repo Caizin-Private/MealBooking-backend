@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/meals")
 @Tag(name = "Meal Booking", description = "APIs for managing meal bookings including booking and cancellation")
-@SecurityRequirement(name = "basicAuth")
+@SecurityRequirement(name = "bearerAuth")
 public class MealBookingController {
 
     private final MealBookingService mealBookingService;
