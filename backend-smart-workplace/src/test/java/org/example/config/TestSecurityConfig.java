@@ -21,7 +21,9 @@ public class TestSecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .securityContext(AbstractHttpConfigurer::disable)
+                .sessionManagement(AbstractHttpConfigurer::disable);
         return http.build();
     }
 
