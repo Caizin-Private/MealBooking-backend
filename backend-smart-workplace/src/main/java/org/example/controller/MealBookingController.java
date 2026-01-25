@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.SingleMealBookingRequestDTO;
-import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.SingleMealBookingResponseDTO;
 import org.example.dto.RangeMealBookingRequestDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsRequestDTO;
@@ -48,7 +48,7 @@ public class MealBookingController {
                     description = "Meal booked successfully",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = MealBookingResponseDTO.class),
+                            schema = @Schema(implementation = SingleMealBookingResponseDTO.class),
                             examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Meal booked successfully for 2026-01-25\", \"bookingId\": 123, \"bookingDate\": \"2026-01-25\"}")
                     )
             ),
@@ -69,7 +69,7 @@ public class MealBookingController {
                     description = "Internal server error"
             )
     })
-    public ResponseEntity<MealBookingResponseDTO> bookSingleMeal(
+    public ResponseEntity<SingleMealBookingResponseDTO> bookSingleMeal(
             @Parameter(
                     description = "Single day meal booking request",
                     required = true,
@@ -81,7 +81,7 @@ public class MealBookingController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)
@@ -202,7 +202,7 @@ public class MealBookingController {
                     description = "Meal cancelled successfully",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = MealBookingResponseDTO.class),
+                            schema = @Schema(implementation = SingleMealBookingResponseDTO.class),
                             examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Meal cancelled successfully for 2026-01-25\", \"bookingId\": 123, \"bookingDate\": \"2026-01-25\"}")
                     )
             ),
@@ -231,7 +231,7 @@ public class MealBookingController {
                     description = "Internal server error"
             )
     })
-    public ResponseEntity<MealBookingResponseDTO> cancelMeal(
+    public ResponseEntity<SingleMealBookingResponseDTO> cancelMeal(
             @Parameter(
                     description = "Cancel meal request",
                     required = true,
@@ -239,7 +239,7 @@ public class MealBookingController {
             )
             @Valid @RequestBody CancelMealRequestDTO request
     ) {
-        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         return response.isSuccess()
                 ? ResponseEntity.ok(response)

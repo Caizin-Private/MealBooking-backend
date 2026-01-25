@@ -1,7 +1,7 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.SingleMealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.dto.CancelMealRequestDTO;
@@ -32,24 +32,24 @@ public class MealBookingServiceImpl implements MealBookingService {
     private final Clock clock;
 
     @Override
-    public MealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
+    public SingleMealBookingResponseDTO bookSingleMeal(User user, LocalDate date) {
         try {
             LocalDate today = LocalDate.now(clock);
             if (date.isBefore(today)) {
-                return MealBookingResponseDTO.failure("Cannot book meals for past dates");
+                return SingleMealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
 
             if (date.getDayOfWeek().getValue() >= 6) {
-                return MealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
+                return SingleMealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
             }
 
             LocalTime now = LocalTime.now(clock);
             if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
-                return MealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
+                return SingleMealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
             }
 
             if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-                return MealBookingResponseDTO.failure("Meal already booked for " + date);
+                return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
             }
 
             MealBooking booking = MealBooking.builder()
@@ -64,14 +64,14 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             pushNotificationService.sendSingleMealBookingConfirmation(user.getId(), date);
 
-            return MealBookingResponseDTO.success(
+            return SingleMealBookingResponseDTO.success(
                     "Meal booked successfully for " + date,
                     savedBooking.getId(),
                     date.toString()
             );
 
         } catch (Exception e) {
-            return MealBookingResponseDTO.failure("Booking failed: " + e.getMessage());
+            return SingleMealBookingResponseDTO.failure("Booking failed: " + e.getMessage());
         }
     }
 
@@ -163,7 +163,7 @@ public class MealBookingServiceImpl implements MealBookingService {
     }
 
     @Override
-    public MealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request) {
+    public SingleMealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request) {
         try {
             User user = userRepository.findById(request.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
@@ -172,7 +172,7 @@ public class MealBookingServiceImpl implements MealBookingService {
             LocalDate bookingDate = request.getBookingDate();
 
             if (bookingDate.isBefore(today)) {
-                return MealBookingResponseDTO.failure("Cannot cancel meals for past dates");
+                return SingleMealBookingResponseDTO.failure("Cannot cancel meals for past dates");
             }
 
             MealBooking booking = mealBookingRepository.findByUserAndBookingDate(user, bookingDate)
@@ -194,14 +194,14 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             pushNotificationService.sendCancellationConfirmation(user.getId(), bookingDate);
 
-            return MealBookingResponseDTO.success(
+            return SingleMealBookingResponseDTO.success(
                     "Meal cancelled successfully for " + bookingDate,
                     booking.getId(),
                     bookingDate.toString()
             );
 
         } catch (Exception e) {
-            return MealBookingResponseDTO.failure("Cancellation failed: " + e.getMessage());
+            return SingleMealBookingResponseDTO.failure("Cancellation failed: " + e.getMessage());
         }
     }
 }

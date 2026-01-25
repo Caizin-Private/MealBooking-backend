@@ -5,7 +5,7 @@ import org.example.dto.SingleMealBookingRequestDTO;
 import org.example.dto.RangeMealBookingRequestDTO;
 import org.example.dto.UpcomingMealsRequestDTO;
 import org.example.dto.CancelMealRequestDTO;
-import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.SingleMealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.entity.Role;
@@ -65,7 +65,7 @@ class MealBookingControllerTest {
         SingleMealBookingRequestDTO request = new SingleMealBookingRequestDTO();
         request.setDate(LocalDate.now().plusDays(1));
 
-        MealBookingResponseDTO response = MealBookingResponseDTO.success(
+        SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
                 "Meal booked successfully for " + request.getDate(),
                 123L,
                 request.getDate().toString()
@@ -155,7 +155,7 @@ class MealBookingControllerTest {
         request.setUserId(1L);
         request.setBookingDate(LocalDate.now().plusDays(1));
 
-        MealBookingResponseDTO response = MealBookingResponseDTO.success(
+        SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
                 "Meal cancelled successfully for " + request.getBookingDate(),
                 123L,
                 request.getBookingDate().toString()

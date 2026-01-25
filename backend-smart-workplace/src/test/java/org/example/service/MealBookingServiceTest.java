@@ -1,6 +1,6 @@
 package org.example.service;
 
-import org.example.dto.MealBookingResponseDTO;
+import org.example.dto.SingleMealBookingResponseDTO;
 import org.example.dto.RangeMealBookingResponseDTO;
 import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.dto.CancelMealRequestDTO;
@@ -80,7 +80,7 @@ class MealBookingServiceTest {
         });
 
         // When
-        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
         // Then
         assertTrue(response.isSuccess());
@@ -93,7 +93,7 @@ class MealBookingServiceTest {
     @Test
     void shouldFailToBookSingleMealForPastDate() {
         // When
-        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, today.minusDays(1));
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, today.minusDays(1));
 
         // Then
         assertFalse(response.isSuccess());
@@ -110,7 +110,7 @@ class MealBookingServiceTest {
         }
 
         // When
-        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, saturday);
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, saturday);
 
         // Then
         assertFalse(response.isSuccess());
@@ -124,7 +124,7 @@ class MealBookingServiceTest {
         when(mealBookingRepository.existsByUserAndBookingDate(testUser, tomorrow)).thenReturn(true);
 
         // When
-        MealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
         // Then
         assertFalse(response.isSuccess());
@@ -218,7 +218,7 @@ class MealBookingServiceTest {
         when(mealBookingRepository.findByUserAndBookingDate(testUser, tomorrow)).thenReturn(Optional.of(existingBooking));
 
         // When
-        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
         assertTrue(response.isSuccess());
@@ -241,7 +241,7 @@ class MealBookingServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
         // When
-        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
         assertFalse(response.isSuccess());
@@ -261,7 +261,7 @@ class MealBookingServiceTest {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When
-        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
         assertFalse(response.isSuccess());
@@ -282,7 +282,7 @@ class MealBookingServiceTest {
         when(mealBookingRepository.findByUserAndBookingDate(testUser, tomorrow)).thenReturn(Optional.empty());
 
         // When
-        MealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
         assertFalse(response.isSuccess());
