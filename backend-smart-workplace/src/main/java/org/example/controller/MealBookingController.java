@@ -49,7 +49,7 @@ public class MealBookingController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = SingleMealBookingResponseDTO.class),
-                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"Meal booked successfully for 2026-01-25\", \"bookingId\": 123, \"bookingDate\": \"2026-01-25\"}")
+                            examples = @ExampleObject(value = "{\"message\": \"Meal booked successfully for 2026-01-25\", \"bookingDate\": \"2026-01-25\"}")
                     )
             ),
             @ApiResponse(
@@ -57,7 +57,7 @@ public class MealBookingController {
                     description = "Bad request - Invalid input or validation failed",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"Meal already booked for 2026-01-25\"}")
+                            examples = @ExampleObject(value = "{\"message\": \"Meal already booked for 2026-01-25\"}")
                     )
             ),
             @ApiResponse(
@@ -75,73 +75,72 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = SingleMealBookingRequestDTO.class)
             )
-            @Valid @RequestBody SingleMealBookingRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails
+            @Valid @RequestBody SingleMealBookingRequestDTO request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
 
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
 
-        return response.isSuccess()
-                ? ResponseEntity.ok(response)
-                : ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/book-range")
     @Operation(
             summary = "Book meals for a date range",
-            description = "Book meals for multiple dates. Validates each date, cutoff times, and prevents duplicate bookings."
+            description = "Books meals for all valid dates in the range. Weekends and invalid dates are skipped silently."
     )
-    @ApiResponses(value = {
+    @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "Range booking processed successfully",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = RangeMealBookingResponseDTO.class),
-                            examples = @ExampleObject(value = "{\"success\": true, \"message\": \"All meals booked successfully from 2026-01-25 to 2026-01-27\", \"bookedDates\": [\"2026-01-25\", \"2026-01-26\", \"2026-01-27\"]}")
+                            examples = @ExampleObject(
+                                    value = """
+                                    {
+                                      "message": "Meals booked successfully from 2026-01-25 to 2026-01-27",
+                                      "bookedDates": ["2026-01-27"]
+                                    }
+                                    """
+                            )
                     )
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Bad request - Invalid input or validation failed",
+                    description = "No meals booked or invalid range",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(value = "{\"success\": false, \"message\": \"Some bookings failed\", \"failedBookings\": [\"2026-01-26 - Already booked\"]}")
+                            examples = @ExampleObject(
+                                    value = """
+                                    {
+                                      "message": "No meals were booked in the selected range",
+                                      "bookedDates": null
+                                    }
+                                    """
+                            )
                     )
             ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - Invalid credentials"
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Internal server error"
-            )
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<RangeMealBookingResponseDTO> bookRangeMeals(
-            @Parameter(
-                    description = "Range meal booking request",
-                    required = true,
-                    schema = @Schema(implementation = RangeMealBookingRequestDTO.class)
-            )
-            @Valid @RequestBody RangeMealBookingRequestDTO request,
-            @AuthenticationPrincipal UserDetails userDetails
+            @Valid @RequestBody RangeMealBookingRequestDTO request
     ) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
 
-        RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(
-                user,
-                request.getStartDate(),
-                request.getEndDate()
+        return ResponseEntity.ok(
+                mealBookingService.bookRangeMeals(
+                        user,
+                        request.getStartDate(),
+                        request.getEndDate()
+                )
         );
-
-        return response.isSuccess()
-                ? ResponseEntity.ok(response)
-                : ResponseEntity.badRequest().body(response);
     }
+
 
     @PostMapping("/upcoming")
     @Operation(
@@ -241,8 +240,6 @@ public class MealBookingController {
     ) {
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
-        return response.isSuccess()
-                ? ResponseEntity.ok(response)
-                : ResponseEntity.badRequest().body(response);
+        return ResponseEntity.ok(response);
     }
 }

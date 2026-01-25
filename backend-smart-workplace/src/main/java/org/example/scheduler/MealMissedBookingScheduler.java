@@ -34,6 +34,12 @@ public class MealMissedBookingScheduler {
         if (now.isBefore(cutoffTime)) return;
 
         LocalDate today = LocalDate.now(clock);
+
+        // ---------- WEEKEND CONSTRAINT ----------
+        if (today.getDayOfWeek().getValue() >= 6) { // Saturday (6) or Sunday (7)
+            return; // Skip missed booking processing for weekends
+        }
+
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(23, 59, 59);
 

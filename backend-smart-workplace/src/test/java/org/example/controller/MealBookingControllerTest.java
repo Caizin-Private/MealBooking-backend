@@ -64,10 +64,10 @@ class MealBookingControllerTest {
 
         SingleMealBookingRequestDTO request = new SingleMealBookingRequestDTO();
         request.setDate(LocalDate.now().plusDays(1));
+        request.setUserId(123L);
 
         SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
                 "Meal booked successfully for " + request.getDate(),
-                123L,
                 request.getDate().toString()
         );
 
@@ -97,6 +97,7 @@ class MealBookingControllerTest {
         RangeMealBookingRequestDTO request = new RangeMealBookingRequestDTO();
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
+        request.setUserId(123L);
 
         RangeMealBookingResponseDTO response = RangeMealBookingResponseDTO.success(
                 "All meals booked successfully",
@@ -112,7 +113,6 @@ class MealBookingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.bookedDates").isArray());
     }
@@ -157,7 +157,6 @@ class MealBookingControllerTest {
 
         SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
                 "Meal cancelled successfully for " + request.getBookingDate(),
-                123L,
                 request.getBookingDate().toString()
         );
 

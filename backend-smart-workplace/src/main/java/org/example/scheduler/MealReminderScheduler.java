@@ -42,6 +42,11 @@ public class MealReminderScheduler {
 
         LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
 
+        // ---------- WEEKEND CONSTRAINT ----------
+        if (tomorrow.getDayOfWeek().getValue() >= 6) { // Saturday (6) or Sunday (7)
+            return; // Skip reminders for weekends (users cannot book on weekends)
+        }
+
         userRepository.findAll().forEach(user -> {
 
             if (user.getRole() != Role.USER) {
@@ -84,5 +89,9 @@ public class MealReminderScheduler {
         });
     }
 
+    // Manual trigger for testing purposes
+    public void triggerMealBookingRemindersManually() {
+        sendMealBookingReminders();
+    }
 
 }

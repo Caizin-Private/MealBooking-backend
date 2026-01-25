@@ -66,7 +66,6 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             return SingleMealBookingResponseDTO.success(
                     "Meal booked successfully for " + date,
-                    savedBooking.getId(),
                     date.toString()
             );
 
@@ -77,75 +76,69 @@ public class MealBookingServiceImpl implements MealBookingService {
 
     @Override
     public RangeMealBookingResponseDTO bookRangeMeals(User user, LocalDate startDate, LocalDate endDate) {
+
         List<String> bookedDates = new ArrayList<>();
-        List<String> failedBookings = new ArrayList<>();
 
         try {
             LocalDate today = LocalDate.now(clock);
             LocalTime now = LocalTime.now(clock);
 
             if (startDate.isBefore(today)) {
-                return RangeMealBookingResponseDTO.failure("Cannot book meals for past dates", null);
+                return RangeMealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
 
             if (endDate.isBefore(startDate)) {
-                return RangeMealBookingResponseDTO.failure("End date cannot be before start date", null);
+                return RangeMealBookingResponseDTO.failure("End date cannot be before start date");
             }
 
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-                try {
 
-                    if (date.getDayOfWeek().getValue() >= 6) {
-                        failedBookings.add(date + " - Cannot book on weekends (Saturday and Sunday)");
-                        continue;
-                    }
-
-                    if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
-                        failedBookings.add(date + " - Booking closed after 10 PM");
-                        continue;
-                    }
-
-                    if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-                        failedBookings.add(date + " - Already booked");
-                        continue;
-                    }
-
-                    MealBooking booking = MealBooking.builder()
-                            .user(user)
-                            .bookingDate(date)
-                            .bookedAt(LocalDateTime.now(clock))
-                            .status(BookingStatus.BOOKED)
-                            .availableForLunch(true)
-                            .build();
-
-                    mealBookingRepository.save(booking);
-                    bookedDates.add(date.toString());
-
-                } catch (Exception e) {
-                    failedBookings.add(date + " - " + e.getMessage());
+                // Skip weekends silently
+                if (date.getDayOfWeek().getValue() >= 6) {
+                    continue;
                 }
-            }
 
-            if (!bookedDates.isEmpty()) {
-                pushNotificationService.sendBookingConfirmation(user.getId(), startDate, endDate);
+                // Cutoff check (tomorrow after 10 PM)
+                if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                    continue;
+                }
+
+                // Skip already booked dates
+                if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
+                    continue;
+                }
+
+                MealBooking booking = MealBooking.builder()
+                        .user(user)
+                        .bookingDate(date)
+                        .bookedAt(LocalDateTime.now(clock))
+                        .status(BookingStatus.BOOKED)
+                        .availableForLunch(true)
+                        .build();
+
+                mealBookingRepository.save(booking);
+                bookedDates.add(date.toString());
             }
 
             if (bookedDates.isEmpty()) {
-                return RangeMealBookingResponseDTO.failure("No meals were booked", failedBookings);
-            } else if (failedBookings.isEmpty()) {
-                return RangeMealBookingResponseDTO.success(
-                        "All meals booked successfully from " + startDate + " to " + endDate,
-                        bookedDates
-                );
-            } else {
-                return RangeMealBookingResponseDTO.success(
-                        "Some meals booked successfully from " + startDate + " to " + endDate,
-                        bookedDates
+                return RangeMealBookingResponseDTO.failure(
+                        "No meals were booked in the selected range"
                 );
             }
 
+            pushNotificationService.sendBookingConfirmation(
+                    user.getId(), startDate, endDate
+            );
+
+            return RangeMealBookingResponseDTO.success(
+                    "Meals booked successfully from " + startDate + " to " + endDate,
+                    bookedDates
+            );
+
         } catch (Exception e) {
-            return RangeMealBookingResponseDTO.failure("Range booking failed: " + e.getMessage(), failedBookings);
+            return RangeMealBookingResponseDTO.failure(
+                    "Range booking failed: " + e.getMessage()
+            );
         }
     }
 
@@ -178,7 +171,8 @@ public class MealBookingServiceImpl implements MealBookingService {
             MealBooking booking = mealBookingRepository.findByUserAndBookingDate(user, bookingDate)
                     .orElseThrow(() -> new RuntimeException("No booking found for user " + request.getUserId() + " on " + bookingDate));
 
-            mealBookingRepository.delete(booking);
+            booking.setStatus(BookingStatus.CANCELLED);
+            mealBookingRepository.save(booking);
 
             Notification notification = Notification.builder()
                     .userId(user.getId())
@@ -196,7 +190,6 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             return SingleMealBookingResponseDTO.success(
                     "Meal cancelled successfully for " + bookingDate,
-                    booking.getId(),
                     bookingDate.toString()
             );
 

@@ -13,23 +13,17 @@ import java.util.List;
 @Schema(description = "Response for range meal booking operations")
 public class RangeMealBookingResponseDTO {
 
-    @Schema(description = "Indicates if the booking was successful")
-    private boolean success;
-
     @Schema(description = "Message describing the result")
     private String message;
 
     @Schema(description = "List of successfully booked dates")
     private List<String> bookedDates;
 
-    @Schema(description = "List of failed bookings with reasons")
-    private List<String> failedBookings;
-
     public static RangeMealBookingResponseDTO success(String message, List<String> bookedDates) {
-        return new RangeMealBookingResponseDTO(true, message, bookedDates, null);
+        return new RangeMealBookingResponseDTO(message, bookedDates);
     }
 
-    public static RangeMealBookingResponseDTO failure(String message, List<String> failedBookings) {
-        return new RangeMealBookingResponseDTO(false, message, null, failedBookings);
+    public static RangeMealBookingResponseDTO failure(String message) {
+        return new RangeMealBookingResponseDTO(message, null);
     }
 }

@@ -36,6 +36,11 @@ public class MealInactivityScheduler {
 
         LocalDate today = LocalDate.now(clock);
 
+        // ---------- WEEKEND CONSTRAINT ----------
+        if (today.getDayOfWeek().getValue() >= 6) { // Saturday (6) or Sunday (7)
+            return; // Skip inactivity processing for weekends
+        }
+
         // ✔ Correct inactivity window
         LocalDate fromDate = today.minusDays(INACTIVITY_DAYS);
         LocalDate toDate = today.minusDays(1);
@@ -87,4 +92,10 @@ public class MealInactivityScheduler {
             pushNotificationService.sendInactivityNudge(user.getId());
         });
     }
+
+    // Manual trigger for testing purposes
+    public void triggerInactivityNudgesManually() {
+        sendInactivityNudges();
+    }
+
 }
