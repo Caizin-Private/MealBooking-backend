@@ -14,10 +14,6 @@ import java.time.LocalDate;
 @Schema(description = "Request to cancel a meal for a specific user")
 public class CancelMealRequestDTO {
 
-    @NotNull(message = "User ID is required")
-    @Schema(description = "ID of the user to cancel meal for", example = "123")
-    private Long userId;
-
     @NotNull(message = "Booking date is required")
     @Schema(description = "Date of the meal booking to cancel", example = "2026-01-25")
     private LocalDate bookingDate;
