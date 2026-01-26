@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.LocationUpdateRequestDTO;
 import org.example.service.UserLocationService;
@@ -37,48 +38,36 @@ public class LocationController {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(
-                                    value = "{\"message\": \"Location updated successfully\"}"
+                                    value = "Location updated successfully"
                             )
                     )
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "Invalid location data provided",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(
-                                    value = "{\"error\": \"Invalid latitude or longitude values\"}"
-                            )
-                    )
+                    description = "Invalid request (missing header or invalid latitude/longitude)"
             ),
             @ApiResponse(
-                    responseCode = "401",
-                    description = "Unauthorized - User ID required",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(
-                                    value = "{\"error\": \"User ID is required in X-USER-ID header\"}"
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "User not found",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(
-                                    value = "{\"error\": \"User with specified ID not found\"}"
-                            )
-                    )
+                    responseCode = "500",
+                    description = "Internal server error"
             )
     })
     public ResponseEntity<String> updateLocation(
-            @Parameter(description = "Location update request containing latitude and longitude", required = true,
-                    schema = @Schema(implementation = LocationUpdateRequestDTO.class))
-            @RequestBody LocationUpdateRequestDTO request,
-            @Parameter(description = "User ID from authentication header", required = true,
-                    example = "12345")
-            @RequestHeader("X-USER-ID") Long userId
+            @Valid
+            @RequestBody
+            @Parameter(
+                    description = "Location update request containing latitude and longitude",
+                    required = true,
+                    schema = @Schema(implementation = LocationUpdateRequestDTO.class)
+            )
+            LocationUpdateRequestDTO request,
+
+            @RequestHeader("X-USER-ID")
+            @Parameter(
+                    description = "User ID from authentication header",
+                    required = true,
+                    example = "12345"
+            )
+            Long userId
     ) {
         locationService.saveLocation(userId, request);
         return ResponseEntity.ok("Location updated successfully");
