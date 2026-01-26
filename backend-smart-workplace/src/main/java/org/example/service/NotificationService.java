@@ -35,6 +35,25 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    public void createAndSendImmediately(
+            Long userId,
+            String title,
+            String message,
+            NotificationType type
+    ) {
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .title(title)
+                .message(message)
+                .type(type)
+                .scheduledAt(LocalDateTime.now(clock))
+                .sent(true)
+                .sentAt(LocalDateTime.now(clock))
+                .build();
+
+        notificationRepository.save(notification);
+    }
+
     public void markAsSent(Notification notification) {
         if (notification == null) {
             throw new IllegalArgumentException("Notification cannot be null");
