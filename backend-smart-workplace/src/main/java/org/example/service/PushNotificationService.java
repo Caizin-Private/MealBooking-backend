@@ -18,11 +18,4 @@ public interface PushNotificationService {
     void sendMissedBookingNotification(Long userId, LocalDate date);
 
     void sendInactivityNudge(Long userId);
-
-    void sendLunchDefaultedNotification(Long userId, LocalDate date);
-
-    void sendLunchAvailableNotification(Long userId, LocalDate date);
-
-
-
 }

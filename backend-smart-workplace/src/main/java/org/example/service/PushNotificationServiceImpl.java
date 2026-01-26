@@ -108,34 +108,4 @@ public class PushNotificationServiceImpl implements PushNotificationService {
         notificationRepository.save(notification);
         System.out.println("Inactivity nudge notification stored for user " + userId);
     }
-
-    @Override
-    public void sendLunchDefaultedNotification(Long userId, LocalDate date) {
-        Notification notification = Notification.builder()
-                .userId(userId)
-                .title("Meal Defaulted")
-                .message("Your meal for " + date + " has been marked as defaulted")
-                .type(NotificationType.LUNCH_DEFAULTED)
-                .sent(false)
-                .scheduledAt(LocalDateTime.now())
-                .build();
-
-        notificationRepository.save(notification);
-        System.out.println("🍽️ Lunch defaulted notification stored for user " + userId);
-    }
-
-    @Override
-    public void sendLunchAvailableNotification(Long userId, LocalDate date) {
-        Notification notification = Notification.builder()
-                .userId(userId)
-                .title("Lunch Confirmed! 🍽️")
-                .message("Great! You're within office range and confirmed for lunch today. Your meal booking is active.")
-                .type(NotificationType.LUNCH_AVAILABLE)
-                .sent(false)
-                .scheduledAt(LocalDateTime.now())
-                .build();
-
-        notificationRepository.save(notification);
-        System.out.println("📍 Lunch available notification stored for user " + userId);
-    }
 }
