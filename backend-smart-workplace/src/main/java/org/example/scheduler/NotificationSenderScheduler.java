@@ -4,7 +4,6 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.entity.Notification;
 import org.example.repository.NotificationRepository;
-import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,15 +15,18 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "spring.task.scheduling", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(
+        prefix = "spring.task.scheduling",
+        name = "enabled",
+        havingValue = "true"
+)
 public class NotificationSenderScheduler {
 
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
-    private final NotificationService notificationService;
     private final Clock clock;
 
-    @Scheduled(fixedDelay = 60_000)
+    @Scheduled(fixedDelay = 60_000) // every 1 minute
     @Transactional
     public void sendPendingNotifications() {
 
@@ -33,9 +35,7 @@ public class NotificationSenderScheduler {
         List<Notification> pending =
                 notificationRepository.findBySentFalseAndScheduledAtBefore(now);
 
-        if (pending.isEmpty()) {
-            return;
-        }
+        if (pending.isEmpty()) return;
 
         for (Notification notification : pending) {
 
@@ -68,19 +68,18 @@ public class NotificationSenderScheduler {
                     }
                 }
 
+                // ✅ mark as sent ONLY after success
                 notification.setSent(true);
                 notification.setSentAt(LocalDateTime.now(clock));
+                notificationRepository.save(notification);
 
             } catch (Exception ex) {
                 System.out.println(
                         "[ERROR] Notification send failed for id "
                                 + notification.getId()
                 );
+                // ❗ keep sent=false → retry next run
             }
         }
-
-        notificationRepository.saveAll(pending);
     }
-
-
 }

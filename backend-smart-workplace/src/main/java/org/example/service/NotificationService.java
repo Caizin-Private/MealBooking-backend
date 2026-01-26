@@ -36,6 +36,10 @@ public class NotificationService {
     }
 
     public void markAsSent(Notification notification) {
+        if (notification == null) {
+            throw new IllegalArgumentException("Notification cannot be null");
+        }
+
         notification.setSent(true);
         notification.setSentAt(LocalDateTime.now(clock));
         notificationRepository.save(notification);
