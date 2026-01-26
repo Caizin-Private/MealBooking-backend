@@ -73,15 +73,17 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = SingleMealBookingRequestDTO.class)
             )
-            @Valid @RequestBody SingleMealBookingRequestDTO request
+            @Valid @RequestBody SingleMealBookingRequestDTO request,
+            @RequestHeader("X-USER-ID") Long userId
     ) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
 
         return ResponseEntity.ok(response);
     }
+
 
 
     @PostMapping("/book-range")
@@ -125,10 +127,11 @@ public class MealBookingController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<RangeMealBookingResponseDTO> bookRangeMeals(
-            @Valid @RequestBody RangeMealBookingRequestDTO request
+            @Valid @RequestBody RangeMealBookingRequestDTO request,
+            @RequestHeader("X-USER-ID") Long userId
     ) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
         return ResponseEntity.ok(
                 mealBookingService.bookRangeMeals(
@@ -138,6 +141,7 @@ public class MealBookingController {
                 )
         );
     }
+
 
     @PostMapping("/upcoming")
     @Operation(
@@ -177,15 +181,17 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = UpcomingMealsRequestDTO.class)
             )
-            @Valid @RequestBody UpcomingMealsRequestDTO request
+            @Valid @RequestBody UpcomingMealsRequestDTO request,
+            @RequestHeader("X-USER-ID") Long userId
     ) {
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
 
         return ResponseEntity.ok(response);
     }
+
 
     @PostMapping("/cancel")
     @Operation(
@@ -233,9 +239,13 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = CancelMealRequestDTO.class)
             )
-            @Valid @RequestBody CancelMealRequestDTO request
+            @Valid @RequestBody CancelMealRequestDTO request,
+            @RequestHeader("X-USER-ID") Long userId
     ) {
-        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(user, request);
 
         return ResponseEntity.ok(response);
     }
