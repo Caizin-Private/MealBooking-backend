@@ -64,7 +64,6 @@ class MealBookingControllerTest {
 
         SingleMealBookingRequestDTO request = new SingleMealBookingRequestDTO();
         request.setDate(LocalDate.now().plusDays(1));
-        request.setUserId(123L);
 
         SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
                 "Meal booked successfully for " + request.getDate(),
@@ -97,7 +96,6 @@ class MealBookingControllerTest {
         RangeMealBookingRequestDTO request = new RangeMealBookingRequestDTO();
         request.setStartDate(LocalDate.now().plusDays(1));
         request.setEndDate(LocalDate.now().plusDays(3));
-        request.setUserId(123L);
 
         RangeMealBookingResponseDTO response = RangeMealBookingResponseDTO.success(
                 "All meals booked successfully",
@@ -125,7 +123,6 @@ class MealBookingControllerTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
         UpcomingMealsRequestDTO request = new UpcomingMealsRequestDTO();
-        request.setUserId(1L);
 
         UpcomingMealsResponseDTO response = new UpcomingMealsResponseDTO(
                 List.of(LocalDate.now().plusDays(1), LocalDate.now().plusDays(2))
@@ -152,7 +149,6 @@ class MealBookingControllerTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
 
         CancelMealRequestDTO request = new CancelMealRequestDTO();
-        request.setUserId(1L);
         request.setBookingDate(LocalDate.now().plusDays(1));
 
         SingleMealBookingResponseDTO response = SingleMealBookingResponseDTO.success(
@@ -160,7 +156,7 @@ class MealBookingControllerTest {
                 request.getBookingDate().toString()
         );
 
-        when(mealBookingService.cancelMealByUserIdAndDate(any(CancelMealRequestDTO.class)))
+        when(mealBookingService.cancelMealByUserIdAndDate(any(User.class), any(CancelMealRequestDTO.class)))
                 .thenReturn(response);
 
         // Test
