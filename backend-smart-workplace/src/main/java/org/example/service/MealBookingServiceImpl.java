@@ -28,6 +28,7 @@ public class MealBookingServiceImpl implements MealBookingService {
     private final MealBookingRepository mealBookingRepository;
     private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
+    private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final Clock clock;
 
@@ -62,7 +63,13 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
 
-            pushNotificationService.sendSingleMealBookingConfirmation(user.getId(), date);
+            notificationService.schedule(
+                    user.getId(),
+                    "Meal booked",
+                    "Your meal has been booked for " + date,
+                    NotificationType.BOOKING_CONFIRMATION,
+                    LocalDateTime.now(clock)
+            );
 
             return SingleMealBookingResponseDTO.success(
                     "Meal booked successfully for " + date,
@@ -126,9 +133,14 @@ public class MealBookingServiceImpl implements MealBookingService {
                 );
             }
 
-            pushNotificationService.sendBookingConfirmation(
-                    user.getId(), startDate, endDate
+            notificationService.schedule(
+                    user.getId(),
+                    "Meals booked",
+                    "Meals booked from " + startDate + " to " + endDate,
+                    NotificationType.BOOKING_CONFIRMATION,
+                    LocalDateTime.now(clock)
             );
+
 
             return RangeMealBookingResponseDTO.success(
                     "Meals booked successfully from " + startDate + " to " + endDate,
@@ -184,9 +196,17 @@ public class MealBookingServiceImpl implements MealBookingService {
                     .sentAt(null)
                     .build();
 
-            notificationRepository.save(notification);
+            booking.setStatus(BookingStatus.CANCELLED);
+            mealBookingRepository.save(booking);
 
-            pushNotificationService.sendCancellationConfirmation(user.getId(), bookingDate);
+            notificationService.schedule(
+                    user.getId(),
+                    "Meal Cancelled",
+                    "Your meal booking for " + bookingDate + " has been cancelled successfully",
+                    NotificationType.CANCELLATION_CONFIRMATION,
+                    LocalDateTime.now(clock)
+            );
+
 
             return SingleMealBookingResponseDTO.success(
                     "Meal cancelled successfully for " + bookingDate,
