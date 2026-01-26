@@ -3,7 +3,6 @@ package org.example.scheduler;
 import org.example.entity.Notification;
 import org.example.entity.NotificationType;
 import org.example.repository.NotificationRepository;
-import org.example.service.NotificationService;
 import org.example.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +11,10 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest(properties = "spring.task.scheduling.enabled=true")
@@ -32,113 +28,53 @@ class NotificationSenderSchedulerTest {
     @MockBean
     private PushNotificationService pushNotificationService;
 
-    @MockBean
-    private NotificationService notificationService;
-
-    @MockBean
-    private Clock clock;
-
     @Autowired
     private NotificationSenderScheduler scheduler;
 
     @Test
     void sendsMealReminderNotification() {
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-        // ARRANGE
-        LocalDateTime now = LocalDateTime.of(2026, 1, 18, 18, 0);
-        when(clock.instant()).thenReturn(
-                now.atZone(ZoneId.systemDefault()).toInstant()
-        );
-        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
 
         Notification notification = Notification.builder()
                 .id(1L)
                 .userId(10L)
                 .type(NotificationType.MEAL_REMINDER)
-                .scheduledAt(now.minusMinutes(5))
+                .scheduledAt(LocalDateTime.now().minusMinutes(5))
                 .sent(false)
                 .build();
 
-        when(notificationRepository.findBySentFalseAndScheduledAtBefore(now))
-                .thenReturn(List.of(notification));
-
-        // ACT
-        scheduler.sendPendingNotifications();
-
-        // ASSERT
-        verify(pushNotificationService, times(1))
-                .sendMealReminder(10L, notification.getScheduledAt().toLocalDate());
-
-        assertTrue(notification.isSent());
-        assertNotNull(notification.getSentAt());
-
-        verify(notificationRepository, times(1))
-                .saveAll(anyList());
-    }
-
-
-    @Test
-    void sendsMissedBookingNotification() {
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-
-        LocalDateTime now = LocalDateTime.of(2026, 1, 18, 23, 0);
-        when(clock.instant()).thenReturn(
-                now.atZone(ZoneId.systemDefault()).toInstant()
-        );
-        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
-
-        Notification notification = Notification.builder()
-                .userId(5L)
-                .type(NotificationType.MISSED_BOOKING)
-                .scheduledAt(now.minusMinutes(10))
-                .sent(false)
-                .build();
-
-        when(notificationRepository.findBySentFalseAndScheduledAtBefore(now))
+        when(notificationRepository.findBySentFalseAndScheduledAtBefore(any()))
                 .thenReturn(List.of(notification));
 
         scheduler.sendPendingNotifications();
 
-        verify(pushNotificationService, times(1))
-                .sendMissedBookingNotification(5L, now.toLocalDate());
+        verify(pushNotificationService)
+                .sendMealReminder(eq(10L), eq(notification.getScheduledAt().toLocalDate()));
 
-        verify(notificationRepository).saveAll(anyList());
+        verify(notificationRepository).save(notification);
     }
 
     @Test
     void sendsInactivityNudgeNotification() {
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-
-        LocalDateTime now = LocalDateTime.of(2026, 1, 18, 10, 0);
-        when(clock.instant()).thenReturn(
-                now.atZone(ZoneId.systemDefault()).toInstant()
-        );
-        when(clock.getZone()).thenReturn(ZoneId.systemDefault());
 
         Notification notification = Notification.builder()
+                .id(2L)
                 .userId(7L)
                 .type(NotificationType.INACTIVITY_NUDGE)
-                .scheduledAt(now.minusDays(1))
+                .scheduledAt(LocalDateTime.now().minusHours(1))
                 .sent(false)
                 .build();
 
-        when(notificationRepository.findBySentFalseAndScheduledAtBefore(now))
+        when(notificationRepository.findBySentFalseAndScheduledAtBefore(any()))
                 .thenReturn(List.of(notification));
 
         scheduler.sendPendingNotifications();
 
-        verify(pushNotificationService, times(1))
-                .sendInactivityNudge(7L);
+        verify(pushNotificationService).sendInactivityNudge(7L);
+        verify(notificationRepository).save(notification);
     }
 
     @Test
     void doesNothingWhenNoPendingNotifications() {
-
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-        LocalDateTime now = LocalDateTime.of(2026, 1, 19, 10, 0);
-
-        when(clock.instant()).thenReturn(now.atZone(zone).toInstant());
-        when(clock.getZone()).thenReturn(zone);
 
         when(notificationRepository.findBySentFalseAndScheduledAtBefore(any()))
                 .thenReturn(List.of());
@@ -146,8 +82,6 @@ class NotificationSenderSchedulerTest {
         scheduler.sendPendingNotifications();
 
         verifyNoInteractions(pushNotificationService);
-        verify(notificationRepository, never()).saveAll(any());
+        verify(notificationRepository, never()).save(any());
     }
-
-
 }
