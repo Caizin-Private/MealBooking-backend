@@ -15,5 +15,5 @@ public interface MealBookingService {
 
     UpcomingMealsResponseDTO getUpcomingMeals(User user);
 
-    SingleMealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request);
+    SingleMealBookingResponseDTO cancelMealByUserIdAndDate(User user, CancelMealRequestDTO request);
 }
