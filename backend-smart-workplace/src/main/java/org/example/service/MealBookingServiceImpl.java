@@ -32,8 +32,7 @@ public class MealBookingServiceImpl implements MealBookingService {
             LocalDate startDate,
             LocalDate endDate,
             double latitude,
-            double longitude
-    ) {
+            double longitude) {
 
         /* 1️⃣ Geo-fence validation */
         if (!geoFenceService.isInsideAllowedArea(latitude, longitude)) {
@@ -59,34 +58,46 @@ public class MealBookingServiceImpl implements MealBookingService {
         LocalTime now = LocalTime.now(clock);
 
         /* 4️⃣ Loop through date range */
-        for (LocalDate date = startDate;
-             !date.isAfter(endDate);
-             date = date.plusDays(1)) {
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+
+            final LocalDate currentDate = date;
 
             validateBookingDate(
-                    date,
+                    currentDate,
                     today,
                     now,
                     cutoffConfig,
-                    user
-            );
+                    user);
 
-            MealBooking booking = MealBooking.builder()
-                    .user(user)
-                    .bookingDate(date)
-                    .bookedAt(LocalDateTime.now(clock))
-                    .status(BookingStatus.BOOKED)
-                    .build();
-
-            mealBookingRepository.save(booking);
+            // Check if booking exists (soft delete handling)
+            mealBookingRepository.findByUserAndBookingDate(user, currentDate)
+                    .ifPresentOrElse(
+                            existing -> {
+                                if (existing.getStatus() == BookingStatus.BOOKED) {
+                                    throw new RuntimeException("Meal already booked for " + currentDate);
+                                }
+                                // Reactivate cancelled booking
+                                existing.setStatus(BookingStatus.BOOKED);
+                                existing.setBookedAt(LocalDateTime.now(clock));
+                                mealBookingRepository.save(existing);
+                            },
+                            () -> {
+                                // Create new booking
+                                MealBooking booking = MealBooking.builder()
+                                        .user(user)
+                                        .bookingDate(currentDate)
+                                        .bookedAt(LocalDateTime.now(clock))
+                                        .status(BookingStatus.BOOKED)
+                                        .build();
+                                mealBookingRepository.save(booking);
+                            });
         }
 
         /* 5️⃣ Push notification (once for whole range) */
         pushNotificationService.sendBookingConfirmation(
                 user.getId(),
                 startDate,
-                endDate
-        );
+                endDate);
     }
 
     /* 🔒 Internal per-date business rules */
@@ -95,18 +106,12 @@ public class MealBookingServiceImpl implements MealBookingService {
             LocalDate today,
             LocalTime now,
             CutoffConfig cutoffConfig,
-            User user
-    ) {
+            User user) {
 
         /* Cutoff applies only for tomorrow */
         if (date.equals(today.plusDays(1))
                 && now.isAfter(cutoffConfig.getCutoffTime())) {
             throw new RuntimeException("Booking closed for " + date);
-        }
-
-        /* Duplicate booking check */
-        if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-            throw new RuntimeException("Meal already booked for " + date);
         }
     }
 
@@ -118,16 +123,21 @@ public class MealBookingServiceImpl implements MealBookingService {
             throw new RuntimeException("Past bookings cannot be cancelled");
         }
 
-        MealBooking booking =
-                mealBookingRepository
-                        .findByUserAndBookingDate(user, date)
-                        .orElseThrow(() -> new RuntimeException("No booking found for this date"));
+        MealBooking booking = mealBookingRepository
+                .findByUserAndBookingDate(user, date)
+                .orElseThrow(() -> new RuntimeException("No booking found for this date"));
 
-        mealBookingRepository.delete(booking);
+        // Soft delete: Set status to CANCELLED
+        booking.setStatus(BookingStatus.CANCELLED);
+        mealBookingRepository.save(booking);
 
         pushNotificationService.sendCancellationConfirmation(
                 user.getId(),
-                date
-        );
+                date);
+    }
+
+    @Override
+    public java.util.List<MealBooking> getBookingsByUser(User user) {
+        return mealBookingRepository.findByUser(user);
     }
 }

@@ -11,27 +11,25 @@ import java.util.Optional;
 
 public interface MealBookingRepository extends JpaRepository<MealBooking, Long> {
 
-    boolean existsByUserAndBookingDate(User user, LocalDate bookingDate);
-    Optional<MealBooking> findByUserAndBookingDate(User user, LocalDate date);
+        boolean existsByUserAndBookingDate(User user, LocalDate bookingDate);
 
-    boolean existsByUserAndBookingDateBetween(
-            User user,
-            LocalDate start,
-            LocalDate end
-    );
+        Optional<MealBooking> findByUserAndBookingDate(User user, LocalDate date);
 
-    boolean existsByUserAndBookingDateAfter(User user, LocalDate date);
+        boolean existsByUserAndBookingDateBetween(
+                        User user,
+                        LocalDate start,
+                        LocalDate end);
 
-    List<MealBooking> findByBookingDateAndStatus(
-            LocalDate bookingDate,
-            BookingStatus status
-    );
+        boolean existsByUserAndBookingDateAfter(User user, LocalDate date);
 
-    boolean existsByUserAndBookingDateAndStatus(
-            User user,
-            LocalDate bookingDate,
-            BookingStatus status
-    );
+        List<MealBooking> findByBookingDateAndStatus(
+                        LocalDate bookingDate,
+                        BookingStatus status);
 
+        boolean existsByUserAndBookingDateAndStatus(
+                        User user,
+                        LocalDate bookingDate,
+                        BookingStatus status);
 
+        List<MealBooking> findByUser(User user);
 }

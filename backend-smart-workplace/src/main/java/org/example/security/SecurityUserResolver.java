@@ -1,0 +1,85 @@
+package org.example.security;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.example.entity.User;
+import org.example.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SecurityUserResolver {
+
+    private final UserRepository userRepository;
+
+    /**
+     * Retrieves the current authenticated user from the Security Context.
+     * If the user exists in the DB, returns it.
+     * If not, extracts details from JWT and creates a new User (JIT Provisioning).
+     */
+    @Transactional
+    public User resolveUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof Jwt jwt)) {
+            log.warn("⚠️ [RESOLVER] No valid JWT Authentication found in context");
+            throw new IllegalStateException("User not authenticated");
+        }
+
+        // 1. Extract Claims
+        String objectId = extractOid(jwt);
+        String email = extractEmail(jwt);
+        String name = extractName(jwt);
+
+        log.debug("🔎 [RESOLVER] Resolving User: oid={}, email={}", objectId, email);
+
+        // 2. Look up or Create
+        return userRepository.findByExternalId(objectId)
+                .map(existing -> {
+                    // Update metadata if needed
+                    existing.setName(name); // Keep name in sync
+                    return existing;
+                })
+                .orElseGet(() -> {
+                    log.info("🆕 [RESOLVER] Auto-provisioning new user: {}", email);
+                    User newUser = User.builder()
+                            .externalId(objectId)
+                            .email(email)
+                            .name(name)
+                            .role(org.example.entity.Role.USER) // Default role
+                            .createdAt(LocalDateTime.now())
+                            .lastLoginAt(LocalDateTime.now())
+                            .build();
+                    return userRepository.save(newUser);
+                });
+    }
+
+    private String extractOid(Jwt jwt) {
+        String oid = jwt.getClaim("oid");
+        return (oid != null) ? oid : jwt.getSubject();
+    }
+
+    private String extractEmail(Jwt jwt) {
+        if (jwt.hasClaim("email"))
+            return jwt.getClaim("email");
+        if (jwt.hasClaim("preferred_username"))
+            return jwt.getClaim("preferred_username");
+        if (jwt.hasClaim("upn"))
+            return jwt.getClaim("upn");
+        return "unknown-" + extractOid(jwt);
+    }
+
+    private String extractName(Jwt jwt) {
+        if (jwt.hasClaim("name"))
+            return jwt.getClaim("name");
+        return extractEmail(jwt);
+    }
+}

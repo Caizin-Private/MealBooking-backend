@@ -31,7 +31,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Schema(description = "Role of the user in the system", allowableValues = {"USER", "ADMIN"})
+    @Schema(description = "Role of the user in the system", allowableValues = { "USER", "ADMIN" })
     private Role role;
 
     @Column(nullable = false)
@@ -44,7 +44,7 @@ public class User {
 
     @Column(name = "last_login_at")
     @Schema(description = "Timestamp of the last login", example = "2026-01-23T15:30:00")
-    private LocalDateTime lastLoginAt;//to keep track of user last login
+    private LocalDateTime lastLoginAt;// to keep track of user last login
 
     public User(Long id, String name, String email, Role role, LocalDateTime createdAt) {
         this.id = id;
