@@ -48,6 +48,13 @@ public class MealInactivityScheduler {
 
             if (hasRecentBooking) return;
 
+            // Check if there's already an unsent INACTIVITY_NUDGE notification for this user
+            boolean hasUnsentInactivityNudge = notificationRepository.existsByUserIdAndTypeAndSentFalse(
+                    user.getId(),
+                    NotificationType.INACTIVITY_NUDGE
+            );
+            if (hasUnsentInactivityNudge) return;
+
             boolean alreadyNotified =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
