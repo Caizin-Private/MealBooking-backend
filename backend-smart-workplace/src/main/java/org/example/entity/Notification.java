@@ -35,7 +35,7 @@ public class Notification {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Schema(description = "Type of the notification", allowableValues = {"BOOKING_CONFIRMATION", "CANCELLATION_CONFIRMATION", "CUTOFF_REMINDER", "MEAL_REMINDER", "MISSED_BOOKING", "INACTIVITY_NUDGE", "LUNCH_DEFAULTED", "LUNCH_AVAILABLE"})
+    @Schema(description = "Type of the notification", allowableValues = {"BOOKING_CONFIRMATION", "CANCELLATION_CONFIRMATION", "MEAL_REMINDER", "MISSED_BOOKING", "INACTIVITY_NUDGE"})
     private NotificationType type;
 
     @Column(nullable = false)
