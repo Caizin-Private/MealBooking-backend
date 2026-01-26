@@ -23,4 +23,11 @@ public interface NotificationRepository
 
     List<Notification> findByUserIdOrderBySentAtDesc(Long userId);
 
+    boolean existsByUserIdAndTypeAndSentFalse(
+            Long userId,
+            NotificationType type
+    );
+
+    boolean existsByUserIdAndSentFalse(Long userId);
+
 }
