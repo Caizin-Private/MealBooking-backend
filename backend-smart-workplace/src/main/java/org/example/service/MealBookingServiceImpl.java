@@ -70,18 +70,25 @@ public class MealBookingServiceImpl implements MealBookingService {
                     user);
 
             // Check if booking exists (soft delete handling)
+            System.out.println("Checking booking for user " + user.getId() + " on " + currentDate);
             mealBookingRepository.findByUserAndBookingDate(user, currentDate)
                     .ifPresentOrElse(
                             existing -> {
+                                System.out.println("Found existing booking: " + existing.getId() + " Status: "
+                                        + existing.getStatus());
                                 if (existing.getStatus() == BookingStatus.BOOKED) {
+                                    System.out.println("Booking already exists and is BOOKED");
                                     throw new RuntimeException("Meal already booked for " + currentDate);
                                 }
                                 // Reactivate cancelled booking
+                                System.out.println("Reactivating cancelled booking");
                                 existing.setStatus(BookingStatus.BOOKED);
                                 existing.setBookedAt(LocalDateTime.now(clock));
-                                mealBookingRepository.save(existing);
+                                MealBooking saved = mealBookingRepository.save(existing);
+                                System.out.println("Saved booking. New Status: " + saved.getStatus());
                             },
                             () -> {
+                                System.out.println("Creating NEW booking");
                                 // Create new booking
                                 MealBooking booking = MealBooking.builder()
                                         .user(user)
