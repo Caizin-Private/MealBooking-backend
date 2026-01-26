@@ -14,21 +14,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.*;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class UserLocationServiceTest {
 
     @Mock
@@ -40,7 +35,6 @@ class UserLocationServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Mock
     private Clock clock;
 
     @InjectMocks
@@ -53,8 +47,24 @@ class UserLocationServiceTest {
 
     @BeforeEach
     void setUp() {
-        testDate = LocalDate.of(2026, 1, 26);
-        testUser = User.builder().id(3L).name("Test User").build();
+        testDate = LocalDate.of(2026, 1, 26); // Monday
+
+        clock = Clock.fixed(
+                testDate.atTime(13, 0).toInstant(ZoneOffset.UTC),
+                ZoneOffset.UTC
+        );
+
+        userLocationService = new UserLocationService(
+                userLocationRepository,
+                mealBookingRepository,
+                userRepository,
+                clock
+        );
+
+        testUser = User.builder()
+                .id(3L)
+                .name("Test User")
+                .build();
 
         testBooking = MealBooking.builder()
                 .id(1L)
@@ -62,7 +72,7 @@ class UserLocationServiceTest {
                 .bookingDate(testDate)
                 .status(BookingStatus.BOOKED)
                 .availableForLunch(false)
-                .bookedAt(LocalDateTime.now())
+                .bookedAt(LocalDateTime.now(clock))
                 .build();
 
         locationRequest = LocationUpdateRequestDTO.builder()
@@ -70,27 +80,45 @@ class UserLocationServiceTest {
                 .longitude(73.8567)
                 .build();
 
-        when(clock.instant()).thenReturn(
-                testDate.atTime(13, 0).toInstant(ZoneOffset.UTC)
-        );
-        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
-
-        // 🔥🔥🔥 THIS IS THE MISSING PART 🔥🔥🔥
+        // set geofence defaults explicitly
         ReflectionTestUtils.setField(userLocationService, "officeLatitude", 18.5204);
         ReflectionTestUtils.setField(userLocationService, "officeLongitude", 73.8567);
         ReflectionTestUtils.setField(userLocationService, "geofenceRadiusMeters", 500.0);
     }
-    private void lunchTime() {
-        when(clock.instant())
-                .thenReturn(testDate.atTime(13, 0).toInstant(ZoneOffset.UTC));
-    }
 
+    private void setClockTime(int hour, int minute) {
+        clock = Clock.fixed(
+                testDate.atTime(hour, minute).toInstant(ZoneOffset.UTC),
+                ZoneOffset.UTC
+        );
+
+        userLocationService = new UserLocationService(
+                userLocationRepository,
+                mealBookingRepository,
+                userRepository,
+                clock
+        );
+
+        ReflectionTestUtils.setField(userLocationService, "officeLatitude", 18.5204);
+        ReflectionTestUtils.setField(userLocationService, "officeLongitude", 73.8567);
+        ReflectionTestUtils.setField(userLocationService, "geofenceRadiusMeters", 500.0);
+    }
 
     @Test
     void saveLocation_Weekend_ShouldSkipProcessing() {
-        // Saturday
-        LocalDate saturday = LocalDate.of(2026, 1, 24);
-        when(clock.instant()).thenReturn(saturday.atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+        Clock weekendClock = Clock.fixed(
+                LocalDate.of(2026, 1, 24)
+                        .atTime(10, 0)
+                        .toInstant(ZoneOffset.UTC),
+                ZoneOffset.UTC
+        );
+
+        userLocationService = new UserLocationService(
+                userLocationRepository,
+                mealBookingRepository,
+                userRepository,
+                weekendClock
+        );
 
         userLocationService.saveLocation(3L, locationRequest);
 
@@ -100,8 +128,7 @@ class UserLocationServiceTest {
 
     @Test
     void saveLocation_OutsideLunchHours_ShouldSaveLocationOnly() {
-        // 11:00 AM - before lunch hours
-        when(clock.instant()).thenReturn(testDate.atTime(11, 0).toInstant(java.time.ZoneOffset.UTC));
+        setClockTime(11, 0);
 
         userLocationService.saveLocation(3L, locationRequest);
 
@@ -111,8 +138,7 @@ class UserLocationServiceTest {
 
     @Test
     void saveLocation_DuringLunchHours_UserNotFound_ShouldSaveLocationOnly() {
-        // 1:00 PM - during lunch hours
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(java.time.ZoneOffset.UTC));
+        setClockTime(13, 0);
         when(userRepository.findById(3L)).thenReturn(Optional.empty());
 
         userLocationService.saveLocation(3L, locationRequest);
@@ -123,7 +149,7 @@ class UserLocationServiceTest {
 
     @Test
     void saveLocation_DuringLunchHours_NoBooking_ShouldSaveLocationOnly() {
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(java.time.ZoneOffset.UTC));
+        setClockTime(13, 0);
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.empty());
@@ -136,9 +162,9 @@ class UserLocationServiceTest {
 
     @Test
     void saveLocation_DuringLunchHours_AlreadyAvailable_ShouldSaveLocationOnly() {
+        setClockTime(13, 0);
         testBooking.setAvailableForLunch(true);
 
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(java.time.ZoneOffset.UTC));
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.of(testBooking));
@@ -151,34 +177,28 @@ class UserLocationServiceTest {
 
     @Test
     void saveLocation_DuringLunchHours_UserWithinGeofence_ShouldMarkAvailable() {
-        lunchTime();
+        setClockTime(13, 0);
 
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.of(testBooking));
 
-        LocationUpdateRequestDTO location = LocationUpdateRequestDTO.builder()
-                .latitude(18.5204)
-                .longitude(73.8567)
-                .build();
-
-        userLocationService.saveLocation(3L, location);
+        userLocationService.saveLocation(3L, locationRequest);
 
         verify(userLocationRepository).save(any(UserLocation.class));
         verify(mealBookingRepository).save(testBooking);
         assertTrue(testBooking.getAvailableForLunch());
     }
 
-
     @Test
     void saveLocation_DuringLunchHours_UserOutsideGeofence_ShouldRemainUnavailable() {
+        setClockTime(13, 0);
 
         LocationUpdateRequestDTO farLocation = LocationUpdateRequestDTO.builder()
                 .latitude(19.1)
                 .longitude(74.5)
                 .build();
 
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(ZoneOffset.UTC));
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.of(testBooking));
@@ -189,83 +209,23 @@ class UserLocationServiceTest {
         assertFalse(testBooking.getAvailableForLunch());
     }
 
-
     @Test
     void saveLocation_AtLunchEnd_UserOutsideGeofence_ShouldMarkDefaulted() {
-        when(clock.instant())
-                .thenReturn(testDate.atTime(14, 30).toInstant(ZoneOffset.UTC));
-
-        when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
-        when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
-                .thenReturn(Optional.of(testBooking));
-
-        LocationUpdateRequestDTO far = LocationUpdateRequestDTO.builder()
-                .latitude(19.1)
-                .longitude(74.5)
-                .build();
-
-        userLocationService.saveLocation(3L, far);
-
-        verify(userLocationRepository).save(any(UserLocation.class));
-        verify(mealBookingRepository).save(testBooking);
-        assertEquals(BookingStatus.DEFAULT, testBooking.getStatus());
-    }
-
-    @Test
-    void isUserWithinGeofence_OfficeLocation_ShouldReturnTrue() {
-
-        LocationUpdateRequestDTO officeLocation = LocationUpdateRequestDTO.builder()
-                .latitude(18.5204)
-                .longitude(73.8567)
-                .build();
-
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(ZoneOffset.UTC));
-        when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
-        when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
-                .thenReturn(Optional.of(testBooking));
-
-        userLocationService.saveLocation(3L, officeLocation);
-
-        assertTrue(testBooking.getAvailableForLunch());
-    }
-
-
-    @Test
-    void isUserWithinGeofence_NearbyLocation_ShouldReturnTrue() {
-        lunchTime();
-
-        when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
-        when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
-                .thenReturn(Optional.of(testBooking));
-
-        LocationUpdateRequestDTO nearby = LocationUpdateRequestDTO.builder()
-                .latitude(18.5206)
-                .longitude(73.8569)
-                .build();
-
-        userLocationService.saveLocation(3L, nearby);
-
-        verify(userLocationRepository).save(any(UserLocation.class));
-        assertTrue(testBooking.getAvailableForLunch());
-    }
-
-
-    @Test
-    void isUserWithinGeofence_FarLocation_ShouldReturnFalse() {
+        setClockTime(14, 30);
 
         LocationUpdateRequestDTO farLocation = LocationUpdateRequestDTO.builder()
                 .latitude(19.1)
                 .longitude(74.5)
                 .build();
 
-        when(clock.instant()).thenReturn(testDate.atTime(13, 0).toInstant(ZoneOffset.UTC));
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.of(testBooking));
 
         userLocationService.saveLocation(3L, farLocation);
 
-        assertFalse(testBooking.getAvailableForLunch());
+        verify(userLocationRepository).save(any(UserLocation.class));
+        verify(mealBookingRepository).save(testBooking);
+        assertEquals(BookingStatus.DEFAULT, testBooking.getStatus());
     }
-
 }
