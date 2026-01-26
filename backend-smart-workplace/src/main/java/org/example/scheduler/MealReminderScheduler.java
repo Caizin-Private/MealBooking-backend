@@ -36,7 +36,7 @@ public class MealReminderScheduler {
         LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
         if (tomorrow.getDayOfWeek().getValue() >= 6) return;
 
-        LocalDateTime scheduledAt = tomorrow.atStartOfDay();
+        LocalDateTime scheduledAt = LocalDateTime.now(clock);
 
         userRepository.findAll().forEach(user -> {
 
@@ -46,12 +46,19 @@ public class MealReminderScheduler {
                     mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
             if (alreadyBooked) return;
 
+            // Check if there's already an unsent MEAL_REMINDER notification for this user
+            boolean hasUnsentMealReminder = notificationRepository.existsByUserIdAndTypeAndSentFalse(
+                    user.getId(),
+                    NotificationType.MEAL_REMINDER
+            );
+            if (hasUnsentMealReminder) return;
+
             boolean alreadyNotified =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.MEAL_REMINDER,
-                            scheduledAt,
-                            tomorrow.atTime(23, 59, 59)
+                            LocalDate.now(clock).atStartOfDay(),
+                            LocalDate.now(clock).atTime(23, 59, 59)
                     );
             if (alreadyNotified) return;
 
