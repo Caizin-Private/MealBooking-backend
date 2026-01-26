@@ -1,6 +1,5 @@
 package org.example.scheduler;
 
-
 import lombok.RequiredArgsConstructor;
 import org.example.entity.NotificationType;
 import org.example.entity.Role;
@@ -8,7 +7,6 @@ import org.example.repository.MealBookingRepository;
 import org.example.repository.NotificationRepository;
 import org.example.repository.UserRepository;
 import org.example.service.NotificationService;
-import org.example.service.PushNotificationService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,73 +23,45 @@ public class MealReminderScheduler {
 
     private final UserRepository userRepository;
     private final MealBookingRepository mealBookingRepository;
-    private final PushNotificationService pushNotificationService;
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final Clock clock;
 
-    @Scheduled(cron = "0 0 18 * * *") // 6 PM
+    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Kolkata") // 6 PM IST
     public void sendMealBookingReminders() {
 
-        // ---------- CUTOFF CONFIG (Fixed at 10 PM) ----------
-        LocalTime cutoffTime = LocalTime.of(22, 0); // 10 PM
-        LocalTime now = LocalTime.now(clock);
-        if (now.isAfter(cutoffTime)) {
-            return;
-        }
+        LocalTime cutoffTime = LocalTime.of(22, 0);
+        if (LocalTime.now(clock).isAfter(cutoffTime)) return;
 
         LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+        if (tomorrow.getDayOfWeek().getValue() >= 6) return;
 
-        // ---------- WEEKEND CONSTRAINT ----------
-        if (tomorrow.getDayOfWeek().getValue() >= 6) { // Saturday (6) or Sunday (7)
-            return; // Skip reminders for weekends (users cannot book on weekends)
-        }
+        LocalDateTime scheduledAt = tomorrow.atStartOfDay();
 
         userRepository.findAll().forEach(user -> {
 
-            if (user.getRole() != Role.USER) {
-                return;
-            }
+            if (user.getRole() != Role.USER) return;
 
             boolean alreadyBooked =
                     mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
-
-            if (alreadyBooked) {
-                return;
-            }
-
-            // idempotency check
-            LocalDateTime startOfDay = tomorrow.atStartOfDay();
-            LocalDateTime endOfDay = tomorrow.atTime(23, 59, 59);
+            if (alreadyBooked) return;
 
             boolean alreadyNotified =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.MEAL_REMINDER,
-                            startOfDay,
-                            endOfDay
+                            scheduledAt,
+                            tomorrow.atTime(23, 59, 59)
                     );
-
-            if (alreadyNotified) {
-                return;
-            }
+            if (alreadyNotified) return;
 
             notificationService.schedule(
                     user.getId(),
                     "Meal booking reminder",
                     "Please book your meal for " + tomorrow,
                     NotificationType.MEAL_REMINDER,
-                    LocalDateTime.now(clock)
+                    scheduledAt
             );
-
-
-            pushNotificationService.sendMealReminder(user.getId(), tomorrow);
         });
     }
-
-    // Manual trigger for testing purposes
-    public void triggerMealBookingRemindersManually() {
-        sendMealBookingReminders();
-    }
-
 }
