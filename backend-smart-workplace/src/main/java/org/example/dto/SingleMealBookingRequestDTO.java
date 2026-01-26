@@ -21,11 +21,4 @@ public class SingleMealBookingRequestDTO {
             format = "date"
     )
     private LocalDate date;
-
-    @NotNull(message = "User ID is required")
-    @Schema(
-            description = "ID of the user making the booking",
-            example = "123"
-    )
-    private Long userId;
 }

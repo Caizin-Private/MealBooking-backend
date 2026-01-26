@@ -8,9 +8,6 @@ import jakarta.validation.constraints.NotNull;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class UpcomingMealsRequestDTO {
-
-    @NotNull(message = "User ID is required")
-    private Long userId;
+    // No fields needed - userId comes from X-USER-ID header
 }
