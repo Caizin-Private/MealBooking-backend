@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -42,14 +43,37 @@ public class NotificationSenderScheduler {
             try {
                 switch (notification.getType()) {
 
-                    case MEAL_REMINDER ->
-                            pushNotificationService.sendMealReminder(
+                    case BOOKING_CONFIRMATION -> {
+                        String message = notification.getMessage();
+                        if (message.contains("Meals booked from")) {
+                            // Range booking - extract dates from message
+                            String[] parts = message.split("from | to ");
+                            if (parts.length >= 3) {
+                                LocalDate startDate = LocalDate.parse(parts[1].trim());
+                                LocalDate endDate = LocalDate.parse(parts[2].trim());
+                                pushNotificationService.sendBookingConfirmation(
+                                        notification.getUserId(),
+                                        startDate,
+                                        endDate
+                                );
+                            }
+                        } else {
+                            // Single booking
+                            pushNotificationService.sendSingleMealBookingConfirmation(
+                                    notification.getUserId(),
+                                    notification.getScheduledAt().toLocalDate()
+                            );
+                        }
+                    }
+
+                    case CANCELLATION_CONFIRMATION ->
+                            pushNotificationService.sendCancellationConfirmation(
                                     notification.getUserId(),
                                     notification.getScheduledAt().toLocalDate()
                             );
 
-                    case MISSED_BOOKING ->
-                            pushNotificationService.sendMissedBookingNotification(
+                    case MEAL_REMINDER ->
+                            pushNotificationService.sendMealReminder(
                                     notification.getUserId(),
                                     notification.getScheduledAt().toLocalDate()
                             );
