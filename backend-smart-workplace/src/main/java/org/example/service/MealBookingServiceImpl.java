@@ -63,12 +63,11 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
 
-            notificationService.schedule(
+            notificationService.createAndSendImmediately(
                     user.getId(),
                     "Meal booked",
                     "Your meal has been booked for " + date,
-                    NotificationType.BOOKING_CONFIRMATION,
-                    LocalDateTime.now(clock)
+                    NotificationType.BOOKING_CONFIRMATION
             );
 
             return SingleMealBookingResponseDTO.success(
@@ -133,12 +132,11 @@ public class MealBookingServiceImpl implements MealBookingService {
                 );
             }
 
-            notificationService.schedule(
+            notificationService.createAndSendImmediately(
                     user.getId(),
                     "Meals booked",
                     "Meals booked from " + startDate + " to " + endDate,
-                    NotificationType.BOOKING_CONFIRMATION,
-                    LocalDateTime.now(clock)
+                    NotificationType.BOOKING_CONFIRMATION
             );
 
 
@@ -168,11 +166,8 @@ public class MealBookingServiceImpl implements MealBookingService {
     }
 
     @Override
-    public SingleMealBookingResponseDTO cancelMealByUserIdAndDate(CancelMealRequestDTO request) {
+    public SingleMealBookingResponseDTO cancelMealByUserIdAndDate(User user, CancelMealRequestDTO request) {
         try {
-            User user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
-
             LocalDate today = LocalDate.now(clock);
             LocalDate bookingDate = request.getBookingDate();
 
@@ -181,30 +176,16 @@ public class MealBookingServiceImpl implements MealBookingService {
             }
 
             MealBooking booking = mealBookingRepository.findByUserAndBookingDate(user, bookingDate)
-                    .orElseThrow(() -> new RuntimeException("No booking found for user " + request.getUserId() + " on " + bookingDate));
+                    .orElseThrow(() -> new RuntimeException("No booking found for user " + user.getId() + " on " + bookingDate));
 
             booking.setStatus(BookingStatus.CANCELLED);
             mealBookingRepository.save(booking);
 
-            Notification notification = Notification.builder()
-                    .userId(user.getId())
-                    .title("Meal Cancelled")
-                    .message("Your meal booking for " + bookingDate + " has been cancelled successfully")
-                    .type(NotificationType.CANCELLATION_CONFIRMATION)
-                    .sent(false)
-                    .scheduledAt(LocalDateTime.now(clock))
-                    .sentAt(null)
-                    .build();
-
-            booking.setStatus(BookingStatus.CANCELLED);
-            mealBookingRepository.save(booking);
-
-            notificationService.schedule(
+            notificationService.createAndSendImmediately(
                     user.getId(),
                     "Meal Cancelled",
                     "Your meal booking for " + bookingDate + " has been cancelled successfully",
-                    NotificationType.CANCELLATION_CONFIRMATION,
-                    LocalDateTime.now(clock)
+                    NotificationType.CANCELLATION_CONFIRMATION
             );
 
 
