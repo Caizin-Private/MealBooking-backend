@@ -43,7 +43,7 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void sendsMealReminderNotification() {
-        ZoneId zone = ZoneId.of("UTC");
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
         // ARRANGE
         LocalDateTime now = LocalDateTime.of(2026, 1, 18, 18, 0);
         when(clock.instant()).thenReturn(
@@ -79,7 +79,7 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void sendsMissedBookingNotification() {
-        ZoneId zone = ZoneId.of("UTC");
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
 
         LocalDateTime now = LocalDateTime.of(2026, 1, 18, 23, 0);
         when(clock.instant()).thenReturn(
@@ -107,7 +107,7 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void sendsInactivityNudgeNotification() {
-        ZoneId zone = ZoneId.of("UTC");
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
 
         LocalDateTime now = LocalDateTime.of(2026, 1, 18, 10, 0);
         when(clock.instant()).thenReturn(
@@ -134,7 +134,7 @@ class NotificationSenderSchedulerTest {
     @Test
     void doesNothingWhenNoPendingNotifications() {
 
-        ZoneId zone = ZoneId.of("UTC");
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
         LocalDateTime now = LocalDateTime.of(2026, 1, 19, 10, 0);
 
         when(clock.instant()).thenReturn(now.atZone(zone).toInstant());

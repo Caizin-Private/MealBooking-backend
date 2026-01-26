@@ -16,7 +16,7 @@ public class FixedClockConfig {
     public Clock testClock() {
         return Clock.fixed(
                 Instant.parse("2026-01-18T18:00:00Z"),
-                ZoneId.of("UTC")
+                ZoneId.of("Asia/Kolkata")
         );
     }
 }

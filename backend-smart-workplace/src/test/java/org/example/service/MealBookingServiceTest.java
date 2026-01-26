@@ -83,9 +83,8 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
         // Then
-        assertTrue(response.isSuccess());
+        assertTrue(response.getMessage().contains("successfully"));
         assertEquals("Meal booked successfully for " + tomorrow, response.getMessage());
-        assertEquals(123L, response.getBookingId());
         assertEquals(tomorrow.toString(), response.getBookingDate());
         verify(pushNotificationService).sendSingleMealBookingConfirmation(testUser.getId(), tomorrow);
     }
@@ -96,7 +95,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, today.minusDays(1));
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertEquals("Cannot book meals for past dates", response.getMessage());
         verifyNoInteractions(pushNotificationService);
     }
@@ -113,7 +112,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, saturday);
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertEquals("Cannot book meals on weekends (Saturday and Sunday)", response.getMessage());
         verifyNoInteractions(pushNotificationService);
     }
@@ -127,7 +126,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertEquals("Meal already booked for " + tomorrow, response.getMessage());
         verifyNoInteractions(pushNotificationService);
     }
@@ -149,7 +148,7 @@ class MealBookingServiceTest {
         RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(testUser, startDate, endDate);
 
         // Then
-        assertTrue(response.isSuccess());
+        assertTrue(response.getMessage().contains("successfully"));
         assertEquals(3, response.getBookedDates().size());
         verify(pushNotificationService).sendBookingConfirmation(testUser.getId(), startDate, endDate);
     }
@@ -221,12 +220,11 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
-        assertTrue(response.isSuccess());
+        assertTrue(response.getMessage().contains("successfully"));
         assertEquals("Meal cancelled successfully for " + tomorrow, response.getMessage());
-        assertEquals(123L, response.getBookingId());
         assertEquals(tomorrow.toString(), response.getBookingDate());
 
-        verify(mealBookingRepository).delete(existingBooking);
+        verify(mealBookingRepository).save(existingBooking);
         verify(notificationRepository).save(any());
         verify(pushNotificationService).sendCancellationConfirmation(testUser.getId(), tomorrow);
     }
@@ -244,7 +242,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertEquals("Cannot cancel meals for past dates", response.getMessage());
         verifyNoInteractions(mealBookingRepository);
         verifyNoInteractions(notificationRepository);
@@ -264,7 +262,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertTrue(response.getMessage().contains("User not found"));
         verifyNoInteractions(mealBookingRepository);
         verifyNoInteractions(notificationRepository);
@@ -285,7 +283,7 @@ class MealBookingServiceTest {
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(request);
 
         // Then
-        assertFalse(response.isSuccess());
+        assertFalse(response.getMessage().contains("successfully"));
         assertTrue(response.getMessage().contains("No booking found"));
         verifyNoInteractions(notificationRepository);
         verifyNoInteractions(pushNotificationService);

@@ -46,7 +46,7 @@ class MealMissedBookingSchedulerTest {
     @Autowired
     private MealMissedBookingScheduler missedScheduler;
 
-    private final ZoneId ZONE = ZoneId.of("UTC");
+    private final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
 
     @Test
     void missedBookingScheduledAfterCutoffWhenUserHasNotBooked() {

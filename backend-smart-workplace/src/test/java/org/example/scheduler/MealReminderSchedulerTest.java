@@ -101,8 +101,8 @@ class MealReminderSchedulerTest {
 
         // Create a mock clock that returns 23:00 (after 22:00 cutoff)
         Clock afterCutoffClock = Clock.fixed(
-                LocalDateTime.of(2026, 1, 18, 23, 0).atZone(ZoneId.of("UTC")).toInstant(),
-                ZoneId.of("UTC")
+                LocalDateTime.of(2026, 1, 18, 23, 0).atZone(ZoneId.of("Asia/Kolkata")).toInstant(),
+                ZoneId.of("Asia/Kolkata")
         );
 
         // Use reflection or create a new scheduler instance with the different clock
