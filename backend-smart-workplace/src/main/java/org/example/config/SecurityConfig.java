@@ -23,7 +23,6 @@ public class SecurityConfig {
 
     private final AzureOAuth2UserFilter azureOAuth2UserFilter;
 
-    //HTTP request authentication
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

@@ -9,7 +9,7 @@ import java.time.LocalTime;
 @ConfigurationProperties(prefix = "meal-booking")
 public class MealBookingConfig {
 
-    private LocalTime cutoffTime = LocalTime.of(22, 0); // Default 10 PM
+    private LocalTime cutoffTime = LocalTime.of(22, 0);
 
     public LocalTime getCutoffTime() {
         return cutoffTime;
