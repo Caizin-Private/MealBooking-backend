@@ -20,6 +20,7 @@ import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.dto.CancelMealRequestDTO;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
+import org.example.security.SecurityUserResolver;
 import org.example.service.MealBookingService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,7 @@ public class MealBookingController {
 
     private final MealBookingService mealBookingService;
     private final UserRepository userRepository;
+    private final SecurityUserResolver securityUserResolver;
 
     @PostMapping("/book-single")
     @Operation(
@@ -73,11 +75,9 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = SingleMealBookingRequestDTO.class)
             )
-            @Valid @RequestBody SingleMealBookingRequestDTO request,
-            @RequestHeader("X-USER-ID") Long userId
+            @Valid @RequestBody SingleMealBookingRequestDTO request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        User user = securityUserResolver.resolveUser();
 
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(user, request.getDate());
 
@@ -127,11 +127,9 @@ public class MealBookingController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<RangeMealBookingResponseDTO> bookRangeMeals(
-            @Valid @RequestBody RangeMealBookingRequestDTO request,
-            @RequestHeader("X-USER-ID") Long userId
+            @Valid @RequestBody RangeMealBookingRequestDTO request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        User user = securityUserResolver.resolveUser();
 
         return ResponseEntity.ok(
                 mealBookingService.bookRangeMeals(
@@ -181,11 +179,9 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = UpcomingMealsRequestDTO.class)
             )
-            @Valid @RequestBody UpcomingMealsRequestDTO request,
-            @RequestHeader("X-USER-ID") Long userId
+            @Valid @RequestBody UpcomingMealsRequestDTO request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = securityUserResolver.resolveUser();
 
         UpcomingMealsResponseDTO response = mealBookingService.getUpcomingMeals(user);
 
@@ -239,11 +235,9 @@ public class MealBookingController {
                     required = true,
                     schema = @Schema(implementation = CancelMealRequestDTO.class)
             )
-            @Valid @RequestBody CancelMealRequestDTO request,
-            @RequestHeader("X-USER-ID") Long userId
+            @Valid @RequestBody CancelMealRequestDTO request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+        User user = securityUserResolver.resolveUser();
 
         SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(user, request);
 

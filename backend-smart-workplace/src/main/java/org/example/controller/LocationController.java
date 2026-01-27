@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.dto.LocationUpdateRequestDTO;
+import org.example.security.SecurityUserResolver;
 import org.example.service.UserLocationService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class LocationController {
 
     private final UserLocationService locationService;
+    private final SecurityUserResolver securityUserResolver;
 
     @PostMapping("/update")
     @Operation(
@@ -59,16 +61,9 @@ public class LocationController {
                     required = true,
                     schema = @Schema(implementation = LocationUpdateRequestDTO.class)
             )
-            LocationUpdateRequestDTO request,
-
-            @RequestHeader("X-USER-ID")
-            @Parameter(
-                    description = "User ID from authentication header",
-                    required = true,
-                    example = "12345"
-            )
-            Long userId
+            LocationUpdateRequestDTO request
     ) {
+        Long userId = securityUserResolver.resolveUser().getId();
         locationService.saveLocation(userId, request);
         return ResponseEntity.ok("Location updated successfully");
     }
