@@ -65,8 +65,8 @@ azure:
 
 aws:
   ses:
-    region: us-east-1
-    access-key: ${AWS_ACCESS_KEY:}
-    secret-key: ${AWS_SECRET_KEY:}
-    from-email: ${AWS_FROM_EMAIL:mdivyanshi563@gmail.com}
-    hr-email: ${HR_EMAIL:misdivyanshi563@gmail.com
+    region: ${AWS_REGION:ap-south-1}
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+    from-email: ${AWS_FROM_EMAIL}
+    hr-email: ${HR_EMAIL}

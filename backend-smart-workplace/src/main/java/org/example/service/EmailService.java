@@ -2,8 +2,8 @@ package org.example.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.config.AwsSesConfig;
 import org.example.entity.MealBooking;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.ses.SesClient;
 import software.amazon.awssdk.services.ses.model.*;
@@ -16,11 +16,21 @@ import java.util.List;
 public class EmailService {
 
     private final SesClient sesClient;
-    private final AwsSesConfig awsSesConfig;
+
+    @Value("${aws.ses.from-email}")
+    private String fromEmail;
+
+    @Value("${aws.ses.hr-email}")
+    private String hrEmail;
 
     public void sendBookingSummaryEmail(List<MealBooking> bookings) {
+        if (bookings == null || bookings.isEmpty()) {
+            log.warn("No bookings found. Skipping booking summary email.");
+            return;
+        }
+
         try {
-            String subject = "Meal Booking Summary for Tomorrow - " +
+            String subject = "Meal Booking Summary for " +
                     bookings.get(0).getBookingDate().plusDays(1);
 
             String htmlBody = generateBookingSummaryHtml(bookings);
@@ -28,7 +38,7 @@ public class EmailService {
 
             SendEmailRequest emailRequest = SendEmailRequest.builder()
                     .destination(Destination.builder()
-                            .toAddresses("misdivyanshi563@gmail.com") // HR email
+                            .toAddresses(hrEmail)
                             .build())
                     .message(Message.builder()
                             .subject(Content.builder()
@@ -46,37 +56,36 @@ public class EmailService {
                                             .build())
                                     .build())
                             .build())
-                    .source("mdivyanshi563@gmail.com") // FROM email
+                    .source(fromEmail)
                     .build();
 
             SendEmailResponse response = sesClient.sendEmail(emailRequest);
-            log.info("Booking summary email sent successfully. Message ID: {}", response.messageId());
+            log.info("Booking summary email sent. MessageId={}", response.messageId());
 
+        } catch (SesException e) {
+            log.error("AWS SES error while sending booking summary email", e);
+            throw new RuntimeException("AWS SES error: " + e.awsErrorDetails().errorMessage(), e);
         } catch (Exception e) {
-            log.error("Failed to send booking summary email. Error: {}", e.getMessage());
-            log.error("Error details: ", e);
-            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+            log.error("Unexpected error while sending booking summary email", e);
+            throw new RuntimeException("Failed to send booking summary email", e);
         }
     }
 
+    // ---------- Helpers ----------
+
     private String generateBookingSummaryHtml(List<MealBooking> bookings) {
         StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html>")
-                .append("<html><head><style>")
-                .append("body { font-family: Arial, sans-serif; margin: 20px; }")
-                .append("table { border-collapse: collapse; width: 100%; margin-top: 20px; }")
-                .append("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }")
-                .append("th { background-color: #f2f2f2; }")
-                .append(".summary { background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin-bottom: 20px; }")
-                .append("</style></head><body>")
+
+        html.append("<html><body style='font-family:Arial;'>")
                 .append("<h2>🍽️ Meal Booking Summary</h2>")
-                .append("<div class='summary'>")
-                .append("<p><strong>Date:</strong> ").append(bookings.get(0).getBookingDate().plusDays(1)).append("</p>")
-                .append("<p><strong>Total Bookings:</strong> ").append(bookings.size()).append("</p>")
-                .append("</div>")
-                .append("<h3>Booking Details:</h3>")
-                .append("<table>")
-                .append("<tr><th>Employee Name</th><th>Email</th><th>Booking Time</th><th>Status</th></tr>");
+                .append("<p><strong>Date:</strong> ")
+                .append(bookings.get(0).getBookingDate().plusDays(1))
+                .append("</p>")
+                .append("<p><strong>Total Bookings:</strong> ")
+                .append(bookings.size())
+                .append("</p>")
+                .append("<table border='1' cellpadding='8' cellspacing='0'>")
+                .append("<tr><th>Name</th><th>Email</th><th>Time</th><th>Status</th></tr>");
 
         for (MealBooking booking : bookings) {
             html.append("<tr>")
@@ -88,9 +97,7 @@ public class EmailService {
         }
 
         html.append("</table>")
-                .append("<p style='margin-top: 20px; font-size: 12px; color: #666;'>")
-                .append("This is an automated email from the Smart Workplace Meal Booking System.")
-                .append("</p>")
+                .append("<p style='font-size:12px;color:#666'>Automated email from Smart Workplace</p>")
                 .append("</body></html>");
 
         return html.toString();
@@ -98,22 +105,26 @@ public class EmailService {
 
     private String generateBookingSummaryText(List<MealBooking> bookings) {
         StringBuilder text = new StringBuilder();
-        text.append("MEAL BOOKING SUMMARY\n");
-        text.append("====================\n\n");
-        text.append("Date: ").append(bookings.get(0).getBookingDate().plusDays(1)).append("\n");
-        text.append("Total Bookings: ").append(bookings.size()).append("\n\n");
-        text.append("BOOKING DETAILS:\n");
-        text.append("-----------------\n");
+
+        text.append("MEAL BOOKING SUMMARY\n")
+                .append("Date: ")
+                .append(bookings.get(0).getBookingDate().plusDays(1))
+                .append("\nTotal Bookings: ")
+                .append(bookings.size())
+                .append("\n\n");
 
         for (MealBooking booking : bookings) {
-            text.append("Employee: ").append(booking.getUser().getName())
-                    .append(" (").append(booking.getUser().getEmail()).append(")\n");
-            text.append("Booking Time: ").append(booking.getBookedAt().toLocalTime()).append("\n");
-            text.append("Status: ").append(booking.getStatus()).append("\n");
-            text.append("---\n");
+            text.append("Employee: ")
+                    .append(booking.getUser().getName())
+                    .append(" (")
+                    .append(booking.getUser().getEmail())
+                    .append(")\n")
+                    .append("Time: ")
+                    .append(booking.getBookedAt().toLocalTime())
+                    .append("\nStatus: ")
+                    .append(booking.getStatus())
+                    .append("\n---\n");
         }
-
-        text.append("\nThis is an automated email from the Smart Workplace Meal Booking System.");
 
         return text.toString();
     }
