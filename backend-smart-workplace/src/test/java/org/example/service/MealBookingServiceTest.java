@@ -355,7 +355,10 @@ class MealBookingServiceTest {
     @Test
     void shouldBookSingleMealSuccessfully() {
         // Given
-        when(mealBookingRepository.existsByUserAndBookingDate(testUser, tomorrow)).thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, tomorrow, BookingStatus.BOOKED))
+                .thenReturn(false);
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, tomorrow, BookingStatus.CANCELLED))
+                .thenReturn(Optional.empty());
         when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> {
             MealBooking booking = invocation.getArgument(0);
             booking.setId(123L);
@@ -406,9 +409,35 @@ class MealBookingServiceTest {
     }
 
     @Test
+    void shouldFailToBookSingleMealAfterCutoffTime() {
+        // Given - Set clock to after 10 PM for tomorrow's booking
+        Clock lateNightClock = Clock.fixed(
+                LocalDate.of(2026, 1, 25)
+                        .atTime(22, 30) // 10:30 PM
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant(),
+                ZoneId.systemDefault()
+        );
+        ReflectionTestUtils.setField(mealBookingService, "clock", lateNightClock);
+
+        // When
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(
+                testUser,
+                LocalDate.of(2026, 1, 26) // Tomorrow
+        );
+
+        // Then
+        assertFalse(response.getMessage().contains("successfully"));
+        assertEquals("Booking closed for tomorrow after 10 PM", response.getMessage());
+        verifyNoInteractions(notificationService);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
     void shouldFailToBookSingleMealForDuplicateBooking() {
         // Given
-        when(mealBookingRepository.existsByUserAndBookingDate(testUser, tomorrow)).thenReturn(true);
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, tomorrow, BookingStatus.BOOKED))
+                .thenReturn(true);
 
         // When
         SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
@@ -420,12 +449,83 @@ class MealBookingServiceTest {
     }
 
     @Test
+    void shouldRebookCancelledMealSuccessfully() {
+        // Given
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(1L)
+                .user(testUser)
+                .bookingDate(tomorrow)
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, tomorrow, BookingStatus.BOOKED))
+                .thenReturn(false);
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, tomorrow, BookingStatus.CANCELLED))
+                .thenReturn(Optional.of(cancelledBooking));
+        when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(testUser, tomorrow);
+
+        // Then
+        assertTrue(response.getMessage().contains("successfully"));
+        assertEquals("Meal rebooked successfully for " + tomorrow, response.getMessage());
+        assertEquals(tomorrow.toString(), response.getBookingDate());
+        verify(notificationService).createAndSendImmediately(
+                testUser.getId(),
+                "Meal rebooked",
+                "Your cancelled meal has been rebooked for " + tomorrow,
+                NotificationType.BOOKING_CONFIRMATION
+        );
+    }
+
+    @Test
+    void shouldFailToRebookCancelledMealAfterCutoffTime() {
+        // Given - Set clock to after 10 PM for tomorrow's booking
+        Clock lateNightClock = Clock.fixed(
+                LocalDate.of(2026, 1, 25)
+                        .atTime(22, 30) // 10:30 PM
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant(),
+                ZoneId.systemDefault()
+        );
+        ReflectionTestUtils.setField(mealBookingService, "clock", lateNightClock);
+
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(1L)
+                .user(testUser)
+                .bookingDate(LocalDate.of(2026, 1, 26)) // Tomorrow
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, LocalDate.of(2026, 1, 26), BookingStatus.BOOKED))
+                .thenReturn(false);
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, LocalDate.of(2026, 1, 26), BookingStatus.CANCELLED))
+                .thenReturn(Optional.of(cancelledBooking));
+
+        // When
+        SingleMealBookingResponseDTO response = mealBookingService.bookSingleMeal(
+                testUser,
+                LocalDate.of(2026, 1, 26)
+        );
+
+        // Then
+        assertFalse(response.getMessage().contains("successfully"));
+        assertEquals("Rebooking closed for tomorrow after 10 PM", response.getMessage());
+        verifyNoInteractions(notificationService);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
     void shouldBookRangeMealsSuccessfully() {
         // Given
         LocalDate startDate = tomorrow;
         LocalDate endDate = tomorrow.plusDays(2);
 
-        when(mealBookingRepository.existsByUserAndBookingDate(eq(testUser), any(LocalDate.class))).thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(eq(testUser), any(LocalDate.class), eq(BookingStatus.BOOKED)))
+                .thenReturn(false);
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(eq(testUser), any(LocalDate.class), eq(BookingStatus.CANCELLED)))
+                .thenReturn(Optional.empty());
         when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> {
             MealBooking booking = invocation.getArgument(0);
             booking.setId(System.currentTimeMillis());
@@ -438,6 +538,109 @@ class MealBookingServiceTest {
         // Then
         assertTrue(response.getMessage().contains("successfully"));
         assertEquals(3, response.getBookedDates().size());
+        verify(notificationService).createAndSendImmediately(
+                testUser.getId(),
+                "Meals booked",
+                "Meals booked from " + startDate + " to " + endDate,
+                NotificationType.BOOKING_CONFIRMATION
+        );
+    }
+
+    @Test
+    void shouldBookRangeMealsWithCancelledMealReactivation() {
+        // Given
+        LocalDate startDate = tomorrow;
+        LocalDate endDate = tomorrow.plusDays(2);
+        LocalDate middleDate = tomorrow.plusDays(1);
+
+        // Mock cancelled booking for the middle date
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(1L)
+                .user(testUser)
+                .bookingDate(middleDate)
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(eq(testUser), any(LocalDate.class), eq(BookingStatus.BOOKED)))
+                .thenReturn(false);
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, middleDate, BookingStatus.CANCELLED))
+                .thenReturn(Optional.of(cancelledBooking));
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(eq(testUser), eq(startDate), eq(BookingStatus.CANCELLED)))
+                .thenReturn(Optional.empty());
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(eq(testUser), eq(endDate), eq(BookingStatus.CANCELLED)))
+                .thenReturn(Optional.empty());
+        when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(testUser, startDate, endDate);
+
+        // Then
+        assertTrue(response.getMessage().contains("successfully"));
+        assertEquals(3, response.getBookedDates().size());
+        assertTrue(response.getBookedDates().contains(startDate.toString()));
+        assertTrue(response.getBookedDates().contains(middleDate.toString()));
+        assertTrue(response.getBookedDates().contains(endDate.toString()));
+
+        // Verify the cancelled booking was reactivated
+        assertEquals(BookingStatus.BOOKED, cancelledBooking.getStatus());
+
+        verify(notificationService).createAndSendImmediately(
+                testUser.getId(),
+                "Meals booked",
+                "Meals booked from " + startDate + " to " + endDate,
+                NotificationType.BOOKING_CONFIRMATION
+        );
+    }
+
+    @Test
+    void shouldBookRangeMealsWithMixedStatuses() {
+        // Given
+        LocalDate startDate = tomorrow;
+        LocalDate endDate = tomorrow.plusDays(3); // 4 days total
+        LocalDate secondDate = tomorrow.plusDays(1);
+        LocalDate thirdDate = tomorrow.plusDays(2);
+        LocalDate fourthDate = tomorrow.plusDays(3);
+
+        // Mock: secondDate already BOOKED, thirdDate CANCELLED, others new
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(2L)
+                .user(testUser)
+                .bookingDate(thirdDate)
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, startDate, BookingStatus.BOOKED))
+                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, secondDate, BookingStatus.BOOKED))
+                .thenReturn(true); // Already booked - should be skipped
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, thirdDate, BookingStatus.BOOKED))
+                .thenReturn(false);
+        when(mealBookingRepository.existsByUserAndBookingDateAndStatus(testUser, fourthDate, BookingStatus.BOOKED))
+                .thenReturn(false);
+
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, startDate, BookingStatus.CANCELLED))
+                .thenReturn(Optional.empty());
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, thirdDate, BookingStatus.CANCELLED))
+                .thenReturn(Optional.of(cancelledBooking));
+        when(mealBookingRepository.findByUserAndBookingDateAndStatus(testUser, fourthDate, BookingStatus.CANCELLED))
+                .thenReturn(Optional.empty());
+
+        when(mealBookingRepository.save(any(MealBooking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // When
+        RangeMealBookingResponseDTO response = mealBookingService.bookRangeMeals(testUser, startDate, endDate);
+
+        // Then
+        assertTrue(response.getMessage().contains("successfully"));
+        assertEquals(3, response.getBookedDates().size()); // startDate, thirdDate (reactivated), fourthDate
+        assertTrue(response.getBookedDates().contains(startDate.toString()));
+        assertFalse(response.getBookedDates().contains(secondDate.toString())); // Already booked - skipped
+        assertTrue(response.getBookedDates().contains(thirdDate.toString())); // Reactivated
+        assertTrue(response.getBookedDates().contains(fourthDate.toString()));
+
+        // Verify the cancelled booking was reactivated
+        assertEquals(BookingStatus.BOOKED, cancelledBooking.getStatus());
+
         verify(notificationService).createAndSendImmediately(
                 testUser.getId(),
                 "Meals booked",
@@ -537,6 +740,59 @@ class MealBookingServiceTest {
         assertFalse(response.getMessage().contains("successfully"));
         assertEquals("Cannot cancel meals for past dates", response.getMessage());
         verifyNoInteractions(mealBookingRepository);
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
+    void shouldFailToCancelMealAfterCutoffTime() {
+        // Given - Set clock to after 10 PM for tomorrow's cancellation
+        Clock lateNightClock = Clock.fixed(
+                LocalDate.of(2026, 1, 25)
+                        .atTime(22, 30) // 10:30 PM
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant(),
+                ZoneId.systemDefault()
+        );
+        ReflectionTestUtils.setField(mealBookingService, "clock", lateNightClock);
+
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setBookingDate(LocalDate.of(2026, 1, 26)); // Tomorrow
+
+        // When
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(testUser, request);
+
+        // Then
+        assertFalse(response.getMessage().contains("successfully"));
+        assertEquals("Cancellation closed for tomorrow after 10 PM", response.getMessage());
+        verifyNoInteractions(mealBookingRepository);
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(pushNotificationService);
+    }
+
+    @Test
+    void shouldFailToCancelAlreadyCancelledMeal() {
+        // Given
+        CancelMealRequestDTO request = new CancelMealRequestDTO();
+        request.setBookingDate(tomorrow);
+
+        MealBooking cancelledBooking = MealBooking.builder()
+                .id(123L)
+                .user(testUser)
+                .bookingDate(tomorrow)
+                .status(BookingStatus.CANCELLED)
+                .build();
+
+        when(mealBookingRepository.findByUserAndBookingDate(testUser, tomorrow))
+                .thenReturn(Optional.of(cancelledBooking));
+
+        // When
+        SingleMealBookingResponseDTO response = mealBookingService.cancelMealByUserIdAndDate(testUser, request);
+
+        // Then
+        assertFalse(response.getMessage().contains("successfully"));
+        assertEquals("Cannot cancel meal that is not booked. Current status: CANCELLED", response.getMessage());
+        verify(mealBookingRepository, never()).save(any());
         verifyNoInteractions(notificationRepository);
         verifyNoInteractions(pushNotificationService);
     }

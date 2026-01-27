@@ -49,37 +49,40 @@ public class MealBookingServiceImpl implements MealBookingService {
                 return SingleMealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
             }
 
-            // Check if booking already exists
-            MealBooking existingBooking = mealBookingRepository.findByUserAndBookingDate(user, date).orElse(null);
+            // Check if booking already exists with BOOKED status
+            boolean existingBookedMeal = mealBookingRepository.existsByUserAndBookingDateAndStatus(user, date, BookingStatus.BOOKED);
+            if (existingBookedMeal) {
+                return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
+            }
 
-            if (existingBooking != null) {
-                if (existingBooking.getStatus() == BookingStatus.BOOKED) {
-                    return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
-                } else if (existingBooking.getStatus() == BookingStatus.CANCELLED) {
-                    // Apply cutoff time check for rebooking too
-                    if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
-                        return SingleMealBookingResponseDTO.failure("Rebooking closed for tomorrow after 10 PM");
-                    }
+            // Check if there's a cancelled booking to reactivate
+            MealBooking cancelledBooking = mealBookingRepository.findByUserAndBookingDateAndStatus(user, date, BookingStatus.CANCELLED)
+                    .orElse(null);
 
-                    // Reactivate cancelled booking
-                    existingBooking.setStatus(BookingStatus.BOOKED);
-                    existingBooking.setBookedAt(LocalDateTime.now(clock));
-                    existingBooking.setAvailableForLunch(false);
-
-                    MealBooking reactivatedBooking = mealBookingRepository.save(existingBooking);
-
-                    notificationService.createAndSendImmediately(
-                            user.getId(),
-                            "Meal rebooked",
-                            "Your cancelled meal has been rebooked for " + date,
-                            NotificationType.BOOKING_CONFIRMATION
-                    );
-
-                    return SingleMealBookingResponseDTO.success(
-                            "Meal rebooked successfully for " + date,
-                            date.toString()
-                    );
+            if (cancelledBooking != null) {
+                // Apply cutoff time check for rebooking too
+                if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                    return SingleMealBookingResponseDTO.failure("Rebooking closed for tomorrow after 10 PM");
                 }
+
+                // Reactivate cancelled booking
+                cancelledBooking.setStatus(BookingStatus.BOOKED);
+                cancelledBooking.setBookedAt(LocalDateTime.now(clock));
+                cancelledBooking.setAvailableForLunch(false);
+
+                MealBooking reactivatedBooking = mealBookingRepository.save(cancelledBooking);
+
+                notificationService.createAndSendImmediately(
+                        user.getId(),
+                        "Meal rebooked",
+                        "Your cancelled meal has been rebooked for " + date,
+                        NotificationType.BOOKING_CONFIRMATION
+                );
+
+                return SingleMealBookingResponseDTO.success(
+                        "Meal rebooked successfully for " + date,
+                        date.toString()
+                );
             }
 
             MealBooking booking = MealBooking.builder()
@@ -138,22 +141,24 @@ public class MealBookingServiceImpl implements MealBookingService {
                     continue;
                 }
 
-                // Check for existing booking and handle reactivation
-                MealBooking existingBooking = mealBookingRepository.findByUserAndBookingDate(user, date).orElse(null);
+                // Check if already booked - skip if so
+                boolean existingBookedMeal = mealBookingRepository.existsByUserAndBookingDateAndStatus(user, date, BookingStatus.BOOKED);
+                if (existingBookedMeal) {
+                    continue;
+                }
 
-                if (existingBooking != null) {
-                    if (existingBooking.getStatus() == BookingStatus.BOOKED) {
-                        // Skip already booked dates
-                        continue;
-                    } else if (existingBooking.getStatus() == BookingStatus.CANCELLED) {
-                        // Reactivate cancelled booking
-                        existingBooking.setStatus(BookingStatus.BOOKED);
-                        existingBooking.setBookedAt(LocalDateTime.now(clock));
-                        existingBooking.setAvailableForLunch(false);
-                        mealBookingRepository.save(existingBooking);
-                        bookedDates.add(date.toString());
-                        continue;
-                    }
+                // Check if there's a cancelled booking to reactivate
+                MealBooking cancelledBooking = mealBookingRepository.findByUserAndBookingDateAndStatus(user, date, BookingStatus.CANCELLED)
+                        .orElse(null);
+
+                if (cancelledBooking != null) {
+                    // Reactivate cancelled booking
+                    cancelledBooking.setStatus(BookingStatus.BOOKED);
+                    cancelledBooking.setBookedAt(LocalDateTime.now(clock));
+                    cancelledBooking.setAvailableForLunch(false);
+                    mealBookingRepository.save(cancelledBooking);
+                    bookedDates.add(date.toString());
+                    continue;
                 }
 
                 // Create new booking if none exists
@@ -213,13 +218,23 @@ public class MealBookingServiceImpl implements MealBookingService {
         try {
             LocalDate today = LocalDate.now(clock);
             LocalDate bookingDate = request.getBookingDate();
+            LocalTime now = LocalTime.now(clock);
 
             if (bookingDate.isBefore(today)) {
                 return SingleMealBookingResponseDTO.failure("Cannot cancel meals for past dates");
             }
 
+            // Apply cutoff time check for cancellation too
+            if (bookingDate.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                return SingleMealBookingResponseDTO.failure("Cancellation closed for tomorrow after 10 PM");
+            }
+
             MealBooking booking = mealBookingRepository.findByUserAndBookingDate(user, bookingDate)
                     .orElseThrow(() -> new RuntimeException("No booking found for user " + user.getId() + " on " + bookingDate));
+
+            if (booking.getStatus() != BookingStatus.BOOKED) {
+                return SingleMealBookingResponseDTO.failure("Cannot cancel meal that is not booked. Current status: " + booking.getStatus());
+            }
 
             booking.setStatus(BookingStatus.CANCELLED);
             mealBookingRepository.save(booking);
