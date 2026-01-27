@@ -49,8 +49,37 @@ public class MealBookingServiceImpl implements MealBookingService {
                 return SingleMealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
             }
 
-            if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-                return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
+            // Check if booking already exists
+            MealBooking existingBooking = mealBookingRepository.findByUserAndBookingDate(user, date).orElse(null);
+
+            if (existingBooking != null) {
+                if (existingBooking.getStatus() == BookingStatus.BOOKED) {
+                    return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
+                } else if (existingBooking.getStatus() == BookingStatus.CANCELLED) {
+                    // Apply cutoff time check for rebooking too
+                    if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
+                        return SingleMealBookingResponseDTO.failure("Rebooking closed for tomorrow after 10 PM");
+                    }
+
+                    // Reactivate cancelled booking
+                    existingBooking.setStatus(BookingStatus.BOOKED);
+                    existingBooking.setBookedAt(LocalDateTime.now(clock));
+                    existingBooking.setAvailableForLunch(false);
+
+                    MealBooking reactivatedBooking = mealBookingRepository.save(existingBooking);
+
+                    notificationService.createAndSendImmediately(
+                            user.getId(),
+                            "Meal rebooked",
+                            "Your cancelled meal has been rebooked for " + date,
+                            NotificationType.BOOKING_CONFIRMATION
+                    );
+
+                    return SingleMealBookingResponseDTO.success(
+                            "Meal rebooked successfully for " + date,
+                            date.toString()
+                    );
+                }
             }
 
             MealBooking booking = MealBooking.builder()
@@ -109,11 +138,25 @@ public class MealBookingServiceImpl implements MealBookingService {
                     continue;
                 }
 
-                // Skip already booked dates
-                if (mealBookingRepository.existsByUserAndBookingDate(user, date)) {
-                    continue;
+                // Check for existing booking and handle reactivation
+                MealBooking existingBooking = mealBookingRepository.findByUserAndBookingDate(user, date).orElse(null);
+
+                if (existingBooking != null) {
+                    if (existingBooking.getStatus() == BookingStatus.BOOKED) {
+                        // Skip already booked dates
+                        continue;
+                    } else if (existingBooking.getStatus() == BookingStatus.CANCELLED) {
+                        // Reactivate cancelled booking
+                        existingBooking.setStatus(BookingStatus.BOOKED);
+                        existingBooking.setBookedAt(LocalDateTime.now(clock));
+                        existingBooking.setAvailableForLunch(false);
+                        mealBookingRepository.save(existingBooking);
+                        bookedDates.add(date.toString());
+                        continue;
+                    }
                 }
 
+                // Create new booking if none exists
                 MealBooking booking = MealBooking.builder()
                         .user(user)
                         .bookingDate(date)

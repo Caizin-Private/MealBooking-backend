@@ -41,10 +41,10 @@ public class UserLocationService {
         }
 
         LocalTime now = LocalTime.now(clock);
-        LocalTime lunchStart = LocalTime.of(12, 0);
-        LocalTime lunchEnd = LocalTime.of(14, 30);
-//        LocalTime lunchStart = LocalTime.of(0, 0);
-//        LocalTime lunchEnd = LocalTime.of(23, 59);
+        LocalTime lunchStart = LocalTime.of(0, 0); // Testing: All day
+        LocalTime lunchEnd = LocalTime.of(23, 59); // Testing: All day
+//        LocalTime lunchStart = LocalTime.of(12, 0);
+//        LocalTime lunchEnd = LocalTime.of(14, 30);
 
         // ✅ 2. Always save location on weekdays
         saveUserLocation(userId, request);

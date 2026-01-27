@@ -62,3 +62,11 @@ office:
 azure:
   tenant-id: f54f468f-415b-4a86-a7cf-c9495812c590
   client-id: 12b1e09e-023f-430b-bf15-13d1223afb90
+
+aws:
+  ses:
+    region: us-east-1
+    access-key: ${AWS_ACCESS_KEY:}
+    secret-key: ${AWS_SECRET_KEY:}
+    from-email: ${AWS_FROM_EMAIL:mdivyanshi563@gmail.com}
+    hr-email: ${HR_EMAIL:misdivyanshi563@gmail.com
