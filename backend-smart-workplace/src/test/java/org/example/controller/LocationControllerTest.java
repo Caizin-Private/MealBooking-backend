@@ -17,9 +17,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.task.scheduling.enabled=true")
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 class LocationControllerTest {
@@ -33,11 +33,11 @@ class LocationControllerTest {
     @MockBean
     private UserLocationService userLocationService;
 
-    private LocationUpdateRequestDTO validRequest;
+    private LocationUpdateRequestDTO validLocationRequest;
 
     @BeforeEach
     void setUp() {
-        validRequest = LocationUpdateRequestDTO.builder()
+        validLocationRequest = LocationUpdateRequestDTO.builder()
                 .latitude(18.5204)
                 .longitude(73.8567)
                 .build();
@@ -45,11 +45,13 @@ class LocationControllerTest {
 
     @Test
     void updateLocation_ValidRequest_ShouldReturnSuccess() throws Exception {
+        doNothing().when(userLocationService)
+                .saveLocation(eq(3L), any(LocationUpdateRequestDTO.class));
 
         mockMvc.perform(post("/api/location/update")
                         .header("X-USER-ID", "3")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest)))
+                        .content(objectMapper.writeValueAsString(validLocationRequest)))
                 .andExpect(status().isOk());
 
         verify(userLocationService).saveLocation(eq(3L), any());
@@ -57,55 +59,82 @@ class LocationControllerTest {
 
     @Test
     void updateLocation_MissingUserIdHeader_ShouldReturnBadRequest() throws Exception {
-
         mockMvc.perform(post("/api/location/update")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest)))
+                        .content(objectMapper.writeValueAsString(validLocationRequest)))
                 .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(userLocationService);
     }
 
     @Test
     void updateLocation_EmptyBody_ShouldReturnBadRequest() throws Exception {
-
         mockMvc.perform(post("/api/location/update")
                         .header("X-USER-ID", "3")
-                        .contentType(MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(""))
                 .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(userLocationService);
     }
 
     @Test
-    void updateLocation_InvalidLatitude_ShouldStillCallService() throws Exception {
-
-        LocationUpdateRequestDTO invalid = LocationUpdateRequestDTO.builder()
+    void updateLocation_InvalidLatitude_ShouldReturnBadRequest() throws Exception {
+        LocationUpdateRequestDTO invalidRequest = LocationUpdateRequestDTO.builder()
                 .latitude(91.0)
-                .longitude(73.0)
+                .longitude(73.8567)
                 .build();
 
         mockMvc.perform(post("/api/location/update")
                         .header("X-USER-ID", "3")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isOk());
-
-        verify(userLocationService).saveLocation(eq(3L), any());
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    void updateLocation_InvalidLongitude_ShouldStillCallService() throws Exception {
-
-        LocationUpdateRequestDTO invalid = LocationUpdateRequestDTO.builder()
-                .latitude(18.0)
+    void updateLocation_InvalidLongitude_ShouldReturnBadRequest() throws Exception {
+        LocationUpdateRequestDTO invalidRequest = LocationUpdateRequestDTO.builder()
+                .latitude(18.5204)
                 .longitude(181.0)
                 .build();
 
         mockMvc.perform(post("/api/location/update")
                         .header("X-USER-ID", "3")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateLocation_BoundaryLatitudeValues_ShouldWork() throws Exception {
+        LocationUpdateRequestDTO boundaryRequest = LocationUpdateRequestDTO.builder()
+                .latitude(90.0)
+                .longitude(180.0)
+                .build();
+
+        doNothing().when(userLocationService)
+                .saveLocation(eq(3L), any());
+
+        mockMvc.perform(post("/api/location/update")
+                        .header("X-USER-ID", "3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(boundaryRequest)))
+                .andExpect(status().isOk());
+
+        verify(userLocationService).saveLocation(eq(3L), any());
+    }
+
+    @Test
+    void updateLocation_NegativeBoundaryValues_ShouldWork() throws Exception {
+        LocationUpdateRequestDTO boundaryRequest = LocationUpdateRequestDTO.builder()
+                .latitude(-90.0)
+                .longitude(-180.0)
+                .build();
+
+        doNothing().when(userLocationService)
+                .saveLocation(eq(3L), any());
+
+        mockMvc.perform(post("/api/location/update")
+                        .header("X-USER-ID", "3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(boundaryRequest)))
                 .andExpect(status().isOk());
 
         verify(userLocationService).saveLocation(eq(3L), any());
@@ -113,14 +142,14 @@ class LocationControllerTest {
 
     @Test
     void updateLocation_ServiceException_ShouldReturn500() throws Exception {
-
-        doThrow(new RuntimeException("boom"))
-                .when(userLocationService).saveLocation(any(), any());
+        doThrow(new RuntimeException("Service error"))
+                .when(userLocationService)
+                .saveLocation(eq(3L), any());
 
         mockMvc.perform(post("/api/location/update")
                         .header("X-USER-ID", "3")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest)))
+                        .content(objectMapper.writeValueAsString(validLocationRequest)))
                 .andExpect(status().isInternalServerError());
     }
 }

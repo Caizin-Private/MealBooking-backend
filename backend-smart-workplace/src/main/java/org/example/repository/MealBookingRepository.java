@@ -41,6 +41,7 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
             LocalDate bookingDate,
             Boolean availableForLunch
     );
+
 }
 
 

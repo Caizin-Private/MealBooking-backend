@@ -21,10 +21,10 @@ import java.time.LocalTime;
 @RequiredArgsConstructor
 public class UserLocationService {
 
-    private final UserLocationRepository repository;
-    private final MealBookingRepository mealBookingRepository;
-    private final UserRepository userRepository;
-    private final Clock clock;
+    public final UserLocationRepository repository;
+    public final MealBookingRepository mealBookingRepository;
+    public final UserRepository userRepository;
+    public final Clock clock;
 
     // ✅ DEFAULTS so unit tests pass
     private double officeLatitude = 18.5204;
@@ -43,6 +43,8 @@ public class UserLocationService {
         LocalTime now = LocalTime.now(clock);
         LocalTime lunchStart = LocalTime.of(12, 0);
         LocalTime lunchEnd = LocalTime.of(14, 30);
+//        LocalTime lunchStart = LocalTime.of(0, 0);
+//        LocalTime lunchEnd = LocalTime.of(23, 59);
 
         // ✅ 2. Always save location on weekdays
         saveUserLocation(userId, request);

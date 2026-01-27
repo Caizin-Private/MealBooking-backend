@@ -58,7 +58,7 @@ public class MealBookingServiceImpl implements MealBookingService {
                     .bookingDate(date)
                     .bookedAt(LocalDateTime.now(clock))
                     .status(BookingStatus.BOOKED)
-                    .availableForLunch(true)
+                    .availableForLunch(false)
                     .build();
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
@@ -119,7 +119,7 @@ public class MealBookingServiceImpl implements MealBookingService {
                         .bookingDate(date)
                         .bookedAt(LocalDateTime.now(clock))
                         .status(BookingStatus.BOOKED)
-                        .availableForLunch(true)
+                        .availableForLunch(false)
                         .build();
 
                 mealBookingRepository.save(booking);

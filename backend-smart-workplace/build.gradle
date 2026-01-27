@@ -33,6 +33,13 @@ dependencies {
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'software.amazon.awssdk:ses:2.25.0'
+    implementation 'software.amazon.awssdk:auth:2.25.0'
+    implementation 'software.amazon.awssdk:regions:2.25.0'
+    implementation 'software.amazon.awssdk:ses'
+    implementation platform("software.amazon.awssdk:bom:2.25.40")
+    implementation "software.amazon.awssdk:ses"
+
 
 
     runtimeOnly 'com.h2database:h2'
