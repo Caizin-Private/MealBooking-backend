@@ -42,6 +42,8 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
             Boolean availableForLunch
     );
 
+    long countByUser(User user);
+
 }
 
 

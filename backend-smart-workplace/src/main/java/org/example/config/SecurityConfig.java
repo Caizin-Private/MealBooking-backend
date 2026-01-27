@@ -104,7 +104,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // .requestMatchers("/api/auth/**", "/actuator/health", "/swagger-ui/**",
                         // "/v3/api-docs/**", "/api/test/**", "/api/location/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/actuator/health", "/swagger-ui/**", "/v3/api-docs/**", "/api/test/**", "/api/location/**", "/api/email/**", "/api/scheduler/**", "/api/ses-test/**", "/api/region-test/**", "/api/test/ion/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/actuator/health", "/swagger-ui/**", "/v3/api-docs/**", "/api/test/**", "/api/location/**", "/api/email/**", "/api/scheduler/**", "/api/ses-test/**", "/api/region-test/**", "/api/test/location/**").permitAll()
                         .anyRequest().authenticated());
 
         return http.build();
