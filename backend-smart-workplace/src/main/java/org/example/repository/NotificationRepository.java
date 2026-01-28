@@ -3,7 +3,6 @@ package org.example.repository;
 import org.example.entity.Notification;
 import org.example.entity.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,14 +19,4 @@ public interface NotificationRepository
             LocalDateTime start,
             LocalDateTime end
     );
-
-    List<Notification> findByUserIdOrderBySentAtDesc(Long userId);
-
-    boolean existsByUserIdAndTypeAndSentFalse(
-            Long userId,
-            NotificationType type
-    );
-
-    boolean existsByUserIdAndSentFalse(Long userId);
-
 }

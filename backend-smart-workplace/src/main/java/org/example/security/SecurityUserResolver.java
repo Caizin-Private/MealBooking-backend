@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -29,18 +28,15 @@ public class SecurityUserResolver {
             throw new IllegalStateException("User not authenticated");
         }
 
-        // 1. Extract Claims
         String objectId = extractOid(jwt);
         String email = extractEmail(jwt);
         String name = extractName(jwt);
 
         log.debug("🔎 [RESOLVER] Resolving User: oid={}, email={}", objectId, email);
 
-        // 2. Look up or Create
         return userRepository.findByExternalId(objectId)
                 .map(existing -> {
-                    // Update metadata if needed
-                    existing.setName(name); // Keep name in sync
+                    existing.setName(name);
                     return existing;
                 })
                 .orElseGet(() -> {
@@ -49,7 +45,7 @@ public class SecurityUserResolver {
                             .externalId(objectId)
                             .email(email)
                             .name(name)
-                            .role(org.example.entity.Role.USER) // Default role
+                            .role(org.example.entity.Role.USER)
                             .createdAt(LocalDateTime.now())
                             .lastLoginAt(LocalDateTime.now())
                             .build();

@@ -79,11 +79,9 @@ class NotificationServiceTest {
         String message = "Test Message";
         LocalDateTime scheduleTime = testTime;
 
-        // Test all notification types
         for (NotificationType type : NotificationType.values()) {
             notificationService.schedule(userId, title, message, type, scheduleTime);
         }
-
         verify(notificationRepository, times(NotificationType.values().length)).save(any(Notification.class));
     }
 

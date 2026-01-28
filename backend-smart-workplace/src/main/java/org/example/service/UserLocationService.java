@@ -9,7 +9,6 @@ import org.example.entity.UserLocation;
 import org.example.repository.MealBookingRepository;
 import org.example.repository.UserLocationRepository;
 import org.example.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -26,7 +25,6 @@ public class UserLocationService {
     public final UserRepository userRepository;
     public final Clock clock;
 
-    // ✅ DEFAULTS so unit tests pass
     private double officeLatitude = 18.5204;
     private double officeLongitude = 73.8567;
     private double geofenceRadiusMeters = 500;
@@ -35,25 +33,20 @@ public class UserLocationService {
 
         LocalDate today = LocalDate.now(clock);
 
-        // ✅ 1. WEEKEND → skip EVERYTHING
         if (today.getDayOfWeek().getValue() >= 6) {
             return;
         }
-
         LocalTime now = LocalTime.now(clock);
-        LocalTime lunchStart = LocalTime.of(0, 0); // Testing: All day
-        LocalTime lunchEnd = LocalTime.of(23, 59); // Testing: All day
-//        LocalTime lunchStart = LocalTime.of(12, 0);
-//        LocalTime lunchEnd = LocalTime.of(14, 30);
+//        LocalTime lunchStart = LocalTime.of(0, 0); // Testing: All day
+//        LocalTime lunchEnd = LocalTime.of(23, 59); // Testing: All day
+        LocalTime lunchStart = LocalTime.of(12, 0);
+        LocalTime lunchEnd = LocalTime.of(14, 30);
 
-        // ✅ 2. Always save location on weekdays
         saveUserLocation(userId, request);
 
-        // ✅ 3. Outside lunch window → no booking logic
         if (now.isBefore(lunchStart) || now.isAfter(lunchEnd)) {
             return;
         }
-
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) return;
 
@@ -69,15 +62,11 @@ public class UserLocationService {
                 request.getLatitude(),
                 request.getLongitude()
         );
-
-        // ✅ 4. Inside geofence → mark available
         if (insideGeofence) {
             booking.setAvailableForLunch(true);
             mealBookingRepository.save(booking);
             return;
         }
-
-        // ✅ 5. EXACTLY at 14:30 → DEFAULT
         if (now.equals(lunchEnd)) {
             booking.setStatus(BookingStatus.DEFAULT);
             mealBookingRepository.save(booking);

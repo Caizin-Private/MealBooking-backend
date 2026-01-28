@@ -20,8 +20,6 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
             LocalDate end
     );
 
-    boolean existsByUserAndBookingDateAfter(User user, LocalDate date);
-
     List<MealBooking> findByBookingDateAndStatus(
             LocalDate bookingDate,
             BookingStatus status
@@ -41,16 +39,6 @@ public interface MealBookingRepository extends JpaRepository<MealBooking, Long> 
 
 
     List<MealBooking> findByUserOrderByBookingDateDesc(User user);
-
-    List<MealBooking> findByUserAndStatusOrderByBookingDateDesc(User user, BookingStatus status);
-
-    List<MealBooking> findByBookingDateAndAvailableForLunch(
-            LocalDate bookingDate,
-            Boolean availableForLunch
-    );
-
-    long countByUser(User user);
-
 }
 
 

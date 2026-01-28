@@ -12,9 +12,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,7 +38,6 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void sendsMealReminderNotification() {
-        // ARRANGE - FixedClockConfig provides 2026-01-18T18:00 in Asia/Kolkata
         LocalDateTime now = LocalDateTime.of(2026, 1, 18, 18, 0);
 
         Notification notification = Notification.builder()
@@ -54,10 +51,8 @@ class NotificationSenderSchedulerTest {
         when(notificationRepository.findBySentFalseAndScheduledAtBefore(now))
                 .thenReturn(List.of(notification));
 
-        // ACT
         scheduler.sendPendingNotifications();
 
-        // ASSERT
         verify(pushNotificationService, times(1))
                 .sendMealReminder(10L, notification.getScheduledAt().toLocalDate());
 
@@ -71,7 +66,6 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void sendsInactivityNudgeNotification() {
-        // ARRANGE - FixedClockConfig provides 2026-01-18T18:00 in Asia/Kolkata
         LocalDateTime now = LocalDateTime.of(2026, 1, 18, 18, 0);
 
         Notification notification = Notification.builder()
@@ -92,7 +86,6 @@ class NotificationSenderSchedulerTest {
 
     @Test
     void doesNothingWhenNoPendingNotifications() {
-        // ARRANGE - FixedClockConfig provides time
         when(notificationRepository.findBySentFalseAndScheduledAtBefore(any()))
                 .thenReturn(List.of());
 

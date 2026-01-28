@@ -39,33 +39,26 @@ public class MealBookingServiceImpl implements MealBookingService {
             if (date.isBefore(today)) {
                 return SingleMealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
-
             if (date.getDayOfWeek().getValue() >= 6) {
                 return SingleMealBookingResponseDTO.failure("Cannot book meals on weekends (Saturday and Sunday)");
             }
-
             LocalTime now = LocalTime.now(clock);
             if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
                 return SingleMealBookingResponseDTO.failure("Booking closed for tomorrow after 10 PM");
             }
 
-            // Check if booking already exists with BOOKED status
             boolean existingBookedMeal = mealBookingRepository.existsByUserAndBookingDateAndStatus(user, date, BookingStatus.BOOKED);
             if (existingBookedMeal) {
                 return SingleMealBookingResponseDTO.failure("Meal already booked for " + date);
             }
-
-            // Check if there's a cancelled booking to reactivate
             MealBooking cancelledBooking = mealBookingRepository.findByUserAndBookingDateAndStatus(user, date, BookingStatus.CANCELLED)
                     .orElse(null);
 
             if (cancelledBooking != null) {
-                // Apply cutoff time check for rebooking too
                 if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
                     return SingleMealBookingResponseDTO.failure("Rebooking closed for tomorrow after 10 PM");
                 }
 
-                // Reactivate cancelled booking
                 cancelledBooking.setStatus(BookingStatus.BOOKED);
                 cancelledBooking.setBookedAt(LocalDateTime.now(clock));
                 cancelledBooking.setAvailableForLunch(false);
@@ -84,7 +77,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                         date.toString()
                 );
             }
-
             MealBooking booking = MealBooking.builder()
                     .user(user)
                     .bookingDate(date)
@@ -102,7 +94,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                     NotificationType.BOOKING_CONFIRMATION,
                     LocalDateTime.now(clock)
             );
-
             return SingleMealBookingResponseDTO.success(
                     "Meal booked successfully for " + date,
                     date.toString()
@@ -125,35 +116,27 @@ public class MealBookingServiceImpl implements MealBookingService {
             if (startDate.isBefore(today)) {
                 return RangeMealBookingResponseDTO.failure("Cannot book meals for past dates");
             }
-
             if (endDate.isBefore(startDate)) {
                 return RangeMealBookingResponseDTO.failure("End date cannot be before start date");
             }
 
             for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
 
-                // Skip weekends silently
                 if (date.getDayOfWeek().getValue() >= 6) {
                     continue;
                 }
-
-                // Cutoff check (tomorrow after 10 PM)
                 if (date.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
                     continue;
                 }
-
-                // Check if already booked - skip if so
                 boolean existingBookedMeal = mealBookingRepository.existsByUserAndBookingDateAndStatus(user, date, BookingStatus.BOOKED);
                 if (existingBookedMeal) {
                     continue;
                 }
 
-                // Check if there's a cancelled booking to reactivate
                 MealBooking cancelledBooking = mealBookingRepository.findByUserAndBookingDateAndStatus(user, date, BookingStatus.CANCELLED)
                         .orElse(null);
 
                 if (cancelledBooking != null) {
-                    // Reactivate cancelled booking
                     cancelledBooking.setStatus(BookingStatus.BOOKED);
                     cancelledBooking.setBookedAt(LocalDateTime.now(clock));
                     cancelledBooking.setAvailableForLunch(false);
@@ -162,7 +145,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                     continue;
                 }
 
-                // Create new booking if none exists
                 MealBooking booking = MealBooking.builder()
                         .user(user)
                         .bookingDate(date)
@@ -180,7 +162,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                         "No meals were booked in the selected range"
                 );
             }
-
             notificationService.schedule(
                     user.getId(),
                     "Meals booked",
@@ -188,8 +169,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                     NotificationType.BOOKING_CONFIRMATION,
                     LocalDateTime.now(clock)
             );
-
-
             return RangeMealBookingResponseDTO.success(
                     "Meals booked successfully from " + startDate + " to " + endDate,
                     bookedDates
@@ -225,8 +204,6 @@ public class MealBookingServiceImpl implements MealBookingService {
             if (bookingDate.isBefore(today)) {
                 return SingleMealBookingResponseDTO.failure("Cannot cancel meals for past dates");
             }
-
-            // Apply cutoff time check for cancellation too
             if (bookingDate.equals(today.plusDays(1)) && now.isAfter(LocalTime.of(22, 0))) {
                 return SingleMealBookingResponseDTO.failure("Cancellation closed for tomorrow after 10 PM");
             }
@@ -237,7 +214,6 @@ public class MealBookingServiceImpl implements MealBookingService {
             if (booking.getStatus() != BookingStatus.BOOKED) {
                 return SingleMealBookingResponseDTO.failure("Cannot cancel meal that is not booked. Current status: " + booking.getStatus());
             }
-
             booking.setStatus(BookingStatus.CANCELLED);
             mealBookingRepository.save(booking);
 
@@ -248,8 +224,6 @@ public class MealBookingServiceImpl implements MealBookingService {
                     NotificationType.CANCELLATION_CONFIRMATION,
                     LocalDateTime.now(clock)
             );
-
-
             return SingleMealBookingResponseDTO.success(
                     "Meal cancelled successfully for " + bookingDate,
                     bookingDate.toString()

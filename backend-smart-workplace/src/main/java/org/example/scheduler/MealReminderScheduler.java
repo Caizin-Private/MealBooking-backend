@@ -27,7 +27,7 @@ public class MealReminderScheduler {
     private final NotificationService notificationService;
     private final Clock clock;
 
-    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Kolkata") // 6 PM IST
+    @Scheduled(cron = "0 0 18 * * *", zone = "Asia/Kolkata")
     public void sendMealBookingReminders() {
 
         LocalTime cutoffTime = LocalTime.of(22, 0);
@@ -36,7 +36,7 @@ public class MealReminderScheduler {
         LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
         if (tomorrow.getDayOfWeek().getValue() >= 6) return;
 
-        LocalDateTime scheduledAt = LocalDateTime.now(clock); // Send NOW (Monday 6 PM)
+        LocalDateTime scheduledAt = LocalDateTime.now(clock);
 
         userRepository.findAll().forEach(user -> {
 
@@ -45,14 +45,12 @@ public class MealReminderScheduler {
             boolean alreadyBooked =
                     mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
             if (alreadyBooked) return;
-
-            // Check if reminder for tomorrow's meal was already sent today
             boolean alreadyRemindedToday =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.MEAL_REMINDER,
-                            LocalDate.now(clock).atStartOfDay(),     // Today 12:00 AM
-                            LocalDate.now(clock).atTime(23, 59, 59)  // Today 11:59 PM
+                            LocalDate.now(clock).atStartOfDay(),
+                            LocalDate.now(clock).atTime(23, 59, 59)
                     );
             if (alreadyRemindedToday) return;
 

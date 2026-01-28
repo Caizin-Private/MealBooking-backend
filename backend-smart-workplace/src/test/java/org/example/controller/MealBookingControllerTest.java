@@ -57,7 +57,6 @@ class MealBookingControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void shouldBookSingleMealSuccessfully() throws Exception {
-        // Setup
         testUser = new User(1L, "Test User", "test@example.com", Role.USER, LocalDateTime.now());
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
@@ -73,7 +72,6 @@ class MealBookingControllerTest {
         when(mealBookingService.bookSingleMeal(any(User.class), any(LocalDate.class)))
                 .thenReturn(response);
 
-        // Test
         mockMvc.perform(post("/api/meals/book-single")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +86,6 @@ class MealBookingControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void shouldBookRangeMealsSuccessfully() throws Exception {
-        // Setup
         testUser = new User(1L, "Test User", "test@example.com", Role.USER, LocalDateTime.now());
 
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
@@ -101,11 +98,9 @@ class MealBookingControllerTest {
                 "All meals booked successfully",
                 List.of("2026-01-26", "2026-01-27", "2026-01-28")
         );
-
         when(mealBookingService.bookRangeMeals(any(User.class), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(response);
 
-        // Test
         mockMvc.perform(post("/api/meals/book-range")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,21 +112,14 @@ class MealBookingControllerTest {
 
     @Test
     void shouldGetUpcomingMealsSuccessfully() throws Exception {
-        // Setup
         testUser = new User(1L, "Test User", "test@example.com", Role.USER, LocalDateTime.now());
-
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-
         UpcomingMealsRequestDTO request = new UpcomingMealsRequestDTO();
-
         UpcomingMealsResponseDTO response = new UpcomingMealsResponseDTO(
                 List.of(LocalDate.now().plusDays(1), LocalDate.now().plusDays(2))
         );
-
         when(mealBookingService.getUpcomingMeals(any(User.class)))
                 .thenReturn(response);
-
-        // Test
         mockMvc.perform(post("/api/meals/upcoming")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -143,11 +131,8 @@ class MealBookingControllerTest {
 
     @Test
     void shouldCancelMealSuccessfully() throws Exception {
-        // Setup
         testUser = new User(1L, "Test User", "test@example.com", Role.USER, LocalDateTime.now());
-
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-
         CancelMealRequestDTO request = new CancelMealRequestDTO();
         request.setBookingDate(LocalDate.now().plusDays(1));
 
@@ -158,8 +143,6 @@ class MealBookingControllerTest {
 
         when(mealBookingService.cancelMealByUserIdAndDate(any(User.class), any(CancelMealRequestDTO.class)))
                 .thenReturn(response);
-
-        // Test
         mockMvc.perform(post("/api/meals/cancel")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -174,9 +157,7 @@ class MealBookingControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void shouldReturnBadRequestForInvalidSingleMealRequest() throws Exception {
-        // Test with missing date
         SingleMealBookingRequestDTO request = new SingleMealBookingRequestDTO();
-
         mockMvc.perform(post("/api/meals/book-single")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -187,7 +168,6 @@ class MealBookingControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void shouldReturnBadRequestForInvalidRangeMealRequest() throws Exception {
-        // Test with missing dates
         RangeMealBookingRequestDTO request = new RangeMealBookingRequestDTO();
 
         mockMvc.perform(post("/api/meals/book-range")
@@ -199,7 +179,6 @@ class MealBookingControllerTest {
 
     @Test
     void shouldReturnBadRequestForInvalidUpcomingMealsRequest() throws Exception {
-        // Test with missing userId
         UpcomingMealsRequestDTO request = new UpcomingMealsRequestDTO();
 
         mockMvc.perform(post("/api/meals/upcoming")
@@ -211,7 +190,6 @@ class MealBookingControllerTest {
 
     @Test
     void shouldReturnBadRequestForInvalidCancelRequest() throws Exception {
-        // Test with missing fields
         CancelMealRequestDTO request = new CancelMealRequestDTO();
 
         mockMvc.perform(post("/api/meals/cancel")
@@ -224,13 +202,11 @@ class MealBookingControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void shouldHandleUserNotFound() throws Exception {
-        // Setup
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.empty());
 
         SingleMealBookingRequestDTO request = new SingleMealBookingRequestDTO();
         request.setDate(LocalDate.now().plusDays(1));
 
-        // Test
         mockMvc.perform(post("/api/meals/book-single")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

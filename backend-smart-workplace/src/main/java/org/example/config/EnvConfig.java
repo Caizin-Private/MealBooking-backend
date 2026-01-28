@@ -10,13 +10,11 @@ public class EnvConfig {
 
     @PostConstruct
     public void init() {
-        // Load .env file from project root
         Dotenv dotenv = Dotenv.configure()
                 .directory(System.getProperty("user.dir"))
                 .ignoreIfMissing()
                 .load();
 
-        // Set system properties for Spring to use
         setSystemProperty(dotenv, "AWS_ACCESS_KEY");
         setSystemProperty(dotenv, "AWS_SECRET_KEY");
         setSystemProperty(dotenv, "AWS_FROM_EMAIL");

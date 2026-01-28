@@ -43,14 +43,8 @@ class MealInactivitySchedulerTest {
 
     private final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
 
-    /**
-     * FixedClockConfig MUST return:
-     * 2026-01-16T10:00Z  (FRIDAY)
-     */
     @Test
     void inactivityNudgeScheduledWhenUserHasNoBookingsInLast3Days() {
-
-        // GIVEN
         User user = new User(
                 1L,
                 "User",
@@ -58,30 +52,19 @@ class MealInactivitySchedulerTest {
                 Role.USER,
                 LocalDateTime.now()
         );
-
         when(userRepository.findAll()).thenReturn(List.of(user));
-
-        // Scheduler logic:
-        // today = 2026-01-16
-        // from  = 2026-01-13
-        // to    = 2026-01-15
         when(mealBookingRepository.existsByUserAndBookingDateBetween(
                 eq(user),
                 eq(LocalDate.of(2026, 1, 13)),
                 eq(LocalDate.of(2026, 1, 15))
         )).thenReturn(false);
-
         when(notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                 eq(1L),
                 eq(NotificationType.INACTIVITY_NUDGE),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class)
         )).thenReturn(false);
-
-        // WHEN
         inactivityScheduler.sendInactivityNudges();
-
-        // THEN
         verify(notificationService, times(1)).schedule(
                 eq(1L),
                 eq("We miss you!"),
@@ -93,7 +76,6 @@ class MealInactivitySchedulerTest {
 
     @Test
     void inactivityNudgeNotScheduledWhenUserBookedRecently() {
-
         User user = new User(
                 1L,
                 "User",
@@ -101,21 +83,16 @@ class MealInactivitySchedulerTest {
                 Role.USER,
                 LocalDateTime.now()
         );
-
         when(userRepository.findAll()).thenReturn(List.of(user));
-
         when(mealBookingRepository.existsByUserAndBookingDateBetween(
                 any(), any(), any()
         )).thenReturn(true);
-
         inactivityScheduler.sendInactivityNudges();
-
         verifyNoInteractions(notificationService);
     }
 
     @Test
     void inactivityNudgeNotScheduledForAdminUser() {
-
         User admin = new User(
                 1L,
                 "Admin",
@@ -123,21 +100,15 @@ class MealInactivitySchedulerTest {
                 Role.ADMIN,
                 LocalDateTime.now()
         );
-
         when(userRepository.findAll()).thenReturn(List.of(admin));
-
         inactivityScheduler.sendInactivityNudges();
-
         verifyNoInteractions(notificationService);
     }
 
     @Test
     void inactivityNudgeNotScheduledWhenNoUsersExist() {
-
         when(userRepository.findAll()).thenReturn(List.of());
-
         inactivityScheduler.sendInactivityNudges();
-
         verifyNoInteractions(notificationService);
     }
 }

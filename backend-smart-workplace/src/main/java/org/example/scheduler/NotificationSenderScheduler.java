@@ -27,7 +27,7 @@ public class NotificationSenderScheduler {
     private final PushNotificationService pushNotificationService;
     private final Clock clock;
 
-    @Scheduled(fixedDelay = 60_000) // every 1 minute
+    @Scheduled(fixedDelay = 60_000)
     @Transactional
     public void sendPendingNotifications() {
 
@@ -46,7 +46,6 @@ public class NotificationSenderScheduler {
                     case BOOKING_CONFIRMATION -> {
                         String message = notification.getMessage();
                         if (message.contains("Meals booked from")) {
-                            // Range booking - extract dates from message
                             String[] parts = message.split("from | to ");
                             if (parts.length >= 3) {
                                 LocalDate startDate = LocalDate.parse(parts[1].trim());
@@ -58,7 +57,6 @@ public class NotificationSenderScheduler {
                                 );
                             }
                         } else {
-                            // Single booking
                             pushNotificationService.sendSingleMealBookingConfirmation(
                                     notification.getUserId(),
                                     notification.getScheduledAt().toLocalDate()
@@ -92,7 +90,6 @@ public class NotificationSenderScheduler {
                     }
                 }
 
-                // ✅ mark as sent ONLY after success
                 notification.setSent(true);
                 notification.setSentAt(LocalDateTime.now(clock));
                 notificationRepository.save(notification);
@@ -102,7 +99,6 @@ public class NotificationSenderScheduler {
                         "[ERROR] Notification send failed for id "
                                 + notification.getId()
                 );
-                // ❗ keep sent=false → retry next run
             }
         }
     }

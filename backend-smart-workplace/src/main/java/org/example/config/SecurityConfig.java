@@ -19,8 +19,6 @@ import java.util.Arrays;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
-    // HTTP request authentication
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http

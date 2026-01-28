@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.entity.MealBooking;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.ses.SesClient;
@@ -78,7 +77,6 @@ public class EmailService {
         }
     }
 
-    // ---------- Helpers ----------
 
     private String generateBookingSummaryHtml(List<MealBooking> bookings) {
         StringBuilder html = new StringBuilder();

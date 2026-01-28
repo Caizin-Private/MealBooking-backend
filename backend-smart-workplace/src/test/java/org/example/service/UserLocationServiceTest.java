@@ -80,7 +80,6 @@ class UserLocationServiceTest {
                 .longitude(73.8567)
                 .build();
 
-        // set geofence defaults explicitly
         ReflectionTestUtils.setField(userLocationService, "officeLatitude", 18.5204);
         ReflectionTestUtils.setField(userLocationService, "officeLongitude", 73.8567);
         ReflectionTestUtils.setField(userLocationService, "geofenceRadiusMeters", 500.0);
@@ -211,12 +210,8 @@ class UserLocationServiceTest {
         when(userRepository.findById(3L)).thenReturn(Optional.of(testUser));
         when(mealBookingRepository.findByUserAndBookingDate(testUser, testDate))
                 .thenReturn(Optional.of(testBooking));
-
         userLocationService.saveLocation(3L, farLocation);
 
         verify(userLocationRepository).save(any(UserLocation.class));
-        // The service might not save the meal booking depending on the exact logic
-        // verify(mealBookingRepository).save(any(MealBooking.class));
-        // assertEquals(BookingStatus.DEFAULT, testBooking.getStatus());
     }
 }

@@ -31,7 +31,6 @@ class PushNotificationServiceImplTest {
         startDate = LocalDate.of(2026, 1, 26);
         endDate = LocalDate.of(2026, 1, 30);
 
-        // Set up to capture console output
         outputStream = new ByteArrayOutputStream();
         System.setOut(new PrintStream(outputStream));
     }
@@ -164,14 +163,12 @@ class PushNotificationServiceImplTest {
 
         String output = outputStream.toString();
 
-        // Verify all notifications were sent
         assertTrue(output.contains("Single meal booking confirmation push notification sent to user " + testUserId));
         assertTrue(output.contains("Booking confirmation push notification sent to user " + testUserId));
         assertTrue(output.contains("Cancellation confirmation push notification sent to user " + testUserId));
         assertTrue(output.contains("Meal reminder push notification sent to user " + testUserId));
         assertTrue(output.contains("Inactivity nudge push notification sent to user " + testUserId));
 
-        // Count occurrences - should be 5 notifications
         int notificationCount = 0;
         String[] lines = output.split(System.lineSeparator());
         for (String line : lines) {
