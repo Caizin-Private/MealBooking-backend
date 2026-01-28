@@ -3,9 +3,7 @@ package org.example.entity;
 public enum NotificationType {
     BOOKING_CONFIRMATION,
     CANCELLATION_CONFIRMATION,
-    CUTOFF_REMINDER,
     MEAL_REMINDER,
     MISSED_BOOKING,
     INACTIVITY_NUDGE,
-    LUNCH_DEFAULTED
 }

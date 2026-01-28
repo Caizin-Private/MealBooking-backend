@@ -1,18 +1,19 @@
 package org.example.service;
 
+import org.example.dto.CancelMealRequestDTO;
+import org.example.dto.SingleMealBookingResponseDTO;
+import org.example.dto.RangeMealBookingResponseDTO;
+import org.example.dto.UpcomingMealsResponseDTO;
 import org.example.entity.User;
 
 import java.time.LocalDate;
 
 public interface MealBookingService {
+    SingleMealBookingResponseDTO bookSingleMeal(User user, LocalDate date);
 
-    void bookMeals(
-            User user,
-            LocalDate startDate,
-            LocalDate endDate,
-            double latitude,
-            double longitude
-    );
+    RangeMealBookingResponseDTO bookRangeMeals(User user, LocalDate startDate, LocalDate endDate);
 
-    void cancelMeal(User user, LocalDate date);
+    UpcomingMealsResponseDTO getUpcomingMeals(User user);
+
+    SingleMealBookingResponseDTO cancelMealByUserIdAndDate(User user, CancelMealRequestDTO request);
 }

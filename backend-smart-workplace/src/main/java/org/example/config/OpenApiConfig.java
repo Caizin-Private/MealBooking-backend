@@ -37,11 +37,13 @@ public class OpenApiConfig {
                                 .url("https://api.smartworkplace.com")
                                 .description("Production server")
                 ))
-                .addSecurityItem(new SecurityRequirement().addList("basicAuth"))
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new io.swagger.v3.oas.models.Components()
-                        .addSecuritySchemes("basicAuth", new SecurityScheme()
+                        .addSecuritySchemes("bearerAuth", new SecurityScheme()
                                 .type(SecurityScheme.Type.HTTP)
-                                .scheme("basic")
-                                .description("Basic Authentication")));
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .description("Azure OAuth2 JWT Bearer Token")));
     }
 }
+
