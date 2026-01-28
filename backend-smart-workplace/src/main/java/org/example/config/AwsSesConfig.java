@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -14,9 +15,10 @@ import software.amazon.awssdk.services.ses.SesClient;
 @ConfigurationProperties(prefix = "aws.ses")
 @Data
 @Slf4j
+@Profile("aws-email")
 public class AwsSesConfig {
 
-    private String region;
+    private String region = "ap-south-1";
     private String accessKey;
     private String secretKey;
 
