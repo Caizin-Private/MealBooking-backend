@@ -21,3 +21,7 @@ target/
 
 # Ignore Gradle build output directory
 build
+
+# Environment variables
+.env
+backend-smart-workplace/.env
