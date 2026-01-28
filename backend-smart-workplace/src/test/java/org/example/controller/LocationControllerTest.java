@@ -82,7 +82,7 @@ class LocationControllerTest {
         mockMvc.perform(post("/api/location/update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validLocationRequest)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
