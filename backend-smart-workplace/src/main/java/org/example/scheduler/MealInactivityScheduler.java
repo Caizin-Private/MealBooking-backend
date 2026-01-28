@@ -35,7 +35,7 @@ public class MealInactivityScheduler {
         LocalDate fromDate = today.minusDays(INACTIVITY_DAYS);
         LocalDate toDate = today.minusDays(1);
 
-        LocalDateTime scheduledAt = today.atStartOfDay();
+        LocalDateTime scheduledAt = LocalDateTime.now(clock); // Schedule for NOW (10 AM)
 
         userRepository.findAll().forEach(user -> {
 
@@ -48,22 +48,15 @@ public class MealInactivityScheduler {
 
             if (hasRecentBooking) return;
 
-            // Check if there's already an unsent INACTIVITY_NUDGE notification for this user
-            boolean hasUnsentInactivityNudge = notificationRepository.existsByUserIdAndTypeAndSentFalse(
-                    user.getId(),
-                    NotificationType.INACTIVITY_NUDGE
-            );
-            if (hasUnsentInactivityNudge) return;
-
-            boolean alreadyNotified =
+            // Check if inactivity nudge for today already exists (sent or unsent)
+            boolean alreadyNotifiedToday =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.INACTIVITY_NUDGE,
-                            scheduledAt,
+                            today.atStartOfDay(),
                             today.atTime(23, 59, 59)
                     );
-
-            if (alreadyNotified) return;
+            if (alreadyNotifiedToday) return;
 
             notificationService.schedule(
                     user.getId(),

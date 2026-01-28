@@ -36,7 +36,7 @@ public class MealReminderScheduler {
         LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
         if (tomorrow.getDayOfWeek().getValue() >= 6) return;
 
-        LocalDateTime scheduledAt = LocalDateTime.now(clock);
+        LocalDateTime scheduledAt = LocalDateTime.now(clock); // Send NOW (Monday 6 PM)
 
         userRepository.findAll().forEach(user -> {
 
@@ -46,28 +46,21 @@ public class MealReminderScheduler {
                     mealBookingRepository.existsByUserAndBookingDate(user, tomorrow);
             if (alreadyBooked) return;
 
-            // Check if there's already an unsent MEAL_REMINDER notification for this user
-            boolean hasUnsentMealReminder = notificationRepository.existsByUserIdAndTypeAndSentFalse(
-                    user.getId(),
-                    NotificationType.MEAL_REMINDER
-            );
-            if (hasUnsentMealReminder) return;
-
-            boolean alreadyNotified =
+            // Check if reminder for tomorrow's meal was already sent today
+            boolean alreadyRemindedToday =
                     notificationRepository.existsByUserIdAndTypeAndScheduledAtBetween(
                             user.getId(),
                             NotificationType.MEAL_REMINDER,
-                            LocalDate.now(clock).atStartOfDay(),
-                            LocalDate.now(clock).atTime(23, 59, 59)
+                            LocalDate.now(clock).atStartOfDay(),     // Today 12:00 AM
+                            LocalDate.now(clock).atTime(23, 59, 59)  // Today 11:59 PM
                     );
-            if (alreadyNotified) return;
+            if (alreadyRemindedToday) return;
 
-            notificationService.schedule(
+            notificationService.createAndSendImmediately(
                     user.getId(),
                     "Meal booking reminder",
-                    "Please book your meal for " + tomorrow,
-                    NotificationType.MEAL_REMINDER,
-                    scheduledAt
+                    "Please book your meal for " + tomorrow + " before 10 PM",
+                    NotificationType.MEAL_REMINDER
             );
         });
     }

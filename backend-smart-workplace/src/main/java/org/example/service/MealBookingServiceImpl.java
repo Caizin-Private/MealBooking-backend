@@ -95,11 +95,12 @@ public class MealBookingServiceImpl implements MealBookingService {
 
             MealBooking savedBooking = mealBookingRepository.save(booking);
 
-            notificationService.createAndSendImmediately(
+            notificationService.schedule(
                     user.getId(),
                     "Meal booked",
                     "Your meal has been booked for " + date,
-                    NotificationType.BOOKING_CONFIRMATION
+                    NotificationType.BOOKING_CONFIRMATION,
+                    LocalDateTime.now(clock)
             );
 
             return SingleMealBookingResponseDTO.success(
@@ -180,11 +181,12 @@ public class MealBookingServiceImpl implements MealBookingService {
                 );
             }
 
-            notificationService.createAndSendImmediately(
+            notificationService.schedule(
                     user.getId(),
                     "Meals booked",
                     "Meals booked from " + startDate + " to " + endDate,
-                    NotificationType.BOOKING_CONFIRMATION
+                    NotificationType.BOOKING_CONFIRMATION,
+                    LocalDateTime.now(clock)
             );
 
 
@@ -239,11 +241,12 @@ public class MealBookingServiceImpl implements MealBookingService {
             booking.setStatus(BookingStatus.CANCELLED);
             mealBookingRepository.save(booking);
 
-            notificationService.createAndSendImmediately(
+            notificationService.schedule(
                     user.getId(),
                     "Meal Cancelled",
                     "Your meal booking for " + bookingDate + " has been cancelled successfully",
-                    NotificationType.CANCELLATION_CONFIRMATION
+                    NotificationType.CANCELLATION_CONFIRMATION,
+                    LocalDateTime.now(clock)
             );
 
 
