@@ -1,11 +1,11 @@
 spring:
   datasource:
-#    url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
-#    username: postgres
-#    password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
-      url: jdbc:postgresql://localhost:5432/smart_workplace
-      username: admin
-      password: admin
+      url: jdbc:postgresql://shortline.proxy.rlwy.net:38052/railway
+      username: postgres
+      password: XWvkGmohKWgQkpsyBqUsZrvSYEgMulFf
+#      url: jdbc:postgresql://localhost:5432/smart_workplace
+#      username: admin
+#      password: admin
       driver-class-name: org.postgresql.Driver
 
   task:
